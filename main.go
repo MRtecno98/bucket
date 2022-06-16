@@ -69,6 +69,7 @@ func main() {
 
 			if err != nil {
 				log.Print("Failed to initialize workspace: ", err)
+				return err
 			}
 
 			fmt.Println("Available contexts: ")
