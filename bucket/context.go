@@ -1,7 +1,7 @@
 package bucket
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/MRtecno98/afero"
 	"github.com/MRtecno98/afero/resolver"
@@ -14,8 +14,9 @@ type Context struct {
 
 type OpenContext struct {
 	Context
-	Fs          afero.Fs
+	Fs          afero.Afero
 	LocalConfig *Config
+	Platform    Platform
 }
 
 type Workspace struct {
@@ -24,8 +25,9 @@ type Workspace struct {
 
 func (w *Workspace) RunWithContext(name string, action func(*OpenContext)) {
 	for _, c := range w.Contexts {
-		log.Printf("Running [ %s ] for < %s >\n", name, c.Name)
+		fmt.Printf("-------------- Running [ %s ] for < %s >\n", name, c.Name)
 		action(c)
+		fmt.Print("\n\n")
 	}
 }
 
@@ -47,7 +49,36 @@ func (c Context) OpenContext() (*OpenContext, error) {
 		conf.Collapse(GlobalConfig) // Also add base options
 	}
 
-	return &OpenContext{Context: c, Fs: fs, LocalConfig: conf}, nil
+	ctx := &OpenContext{Context: c, Fs: afero.Afero{Fs: fs}, LocalConfig: conf}
+
+	return ctx, ctx.LoadPlatform()
+}
+
+func (c *OpenContext) PlatformName() string {
+	if c.Platform != nil {
+		return c.Platform.Type().Name
+	} else {
+		return "none"
+	}
+}
+
+func (c *OpenContext) LoadPlatform() error {
+	if c.LocalConfig != nil && c.LocalConfig.Platform != "" {
+		if pltype, ok := platforms[c.LocalConfig.Platform]; ok {
+			c.Platform = pltype.Platform.Build(c)
+		} else {
+			return fmt.Errorf("unknown platform: %s", c.LocalConfig.Platform)
+		}
+	} else {
+		plat, err := DetectPlatform(c)
+		if err != nil {
+			return err
+		}
+
+		c.Platform = plat
+	}
+
+	return nil
 }
 
 func CreateWorkspace(contexts ...Context) (*Workspace, error) {

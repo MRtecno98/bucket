@@ -11,6 +11,8 @@ import (
 	"github.com/MRtecno98/bucket/bucket"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/slices"
+
+	_ "github.com/MRtecno98/bucket/bucket/platforms"
 )
 
 var w *bucket.Workspace
@@ -72,7 +74,7 @@ func main() {
 			w, err = bucket.GlobalConfig.MakeWorkspace()
 
 			if err != nil {
-				log.Print("Failed to initialize workspace: ", err)
+				log.Print("failed to initialize workspace: ", err)
 				return err
 			}
 
@@ -80,7 +82,8 @@ func main() {
 			for _, v := range w.Contexts {
 				fmt.Printf("\tName: %s\n", v.Name)
 				fmt.Printf("\t\tURL: %s\n", v.URL)
-				fmt.Printf("\t\tFilesystem: %s %v\n\n", v.Fs.Name(), v.Fs)
+				fmt.Printf("\t\tFilesystem: %s %v\n", v.Fs.Name(), v.Fs)
+				fmt.Printf("\t\tPlatform: %v\n\n", v.PlatformName())
 			}
 
 			return

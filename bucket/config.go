@@ -2,7 +2,6 @@ package bucket
 
 import (
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -19,6 +18,7 @@ var GlobalConfig *Config
 type Config struct {
 	ActiveContexts []string  `yaml:"active-contexts"`
 	Contexts       []Context `yaml:"contexts"`
+	Platform       string    `yaml:"platform"`
 }
 
 func (c *Config) MakeWorkspace() (*Workspace, error) {
@@ -98,7 +98,7 @@ func LoadFilesystemConfig(fs afero.Fs, path string) (conf *Config, err error) {
 }
 
 func LoadConfigFrom(f io.Reader) (*Config, error) {
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
