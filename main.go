@@ -17,10 +17,14 @@ var w *bucket.Workspace
 
 func main() {
 	log.SetPrefix("bucket: ")
+	log.SetFlags(0)
 
 	(&cli.App{
 		Name:  "bucket",
 		Usage: "manages spigot servers and plugins",
+
+		UseShortOptionHandling: true,
+		Suggest:                true,
 
 		Flags: []cli.Flag{
 			&cli.StringFlag{
