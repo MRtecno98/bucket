@@ -10,7 +10,8 @@
 			"request": "launch",
 			"mode": "debug",
 			"program": "main.go",
-			"args": ["-c", ".,mem://"]
+			// "args": ["-c", ".,mem://"]
+			"args": ["add", "sas"]
 		}
 	]
 }
