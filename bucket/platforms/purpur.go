@@ -7,9 +7,7 @@ var PurpurTypePlatform = bucket.PlatformType{
 	Install: InstallPurpur,
 	Detect:  nil,
 	Build: func(context *bucket.OpenContext) bucket.Platform {
-		return &PurpurPlatform{
-			PaperPlatform{SpigotPlatform{
-				bucket.ContextPlatform{Context: context}}}}
+		return NewPurpurPlatform(context) // Go boilerplate
 	},
 }
 
@@ -23,6 +21,10 @@ type PurpurPlatform struct {
 
 func (p *PurpurPlatform) Type() bucket.PlatformType {
 	return PurpurTypePlatform
+}
+
+func NewPurpurPlatform(context *bucket.OpenContext) *PurpurPlatform {
+	return &PurpurPlatform{*NewPaperPlatform(context)}
 }
 
 // No detector, don't know how to distinguish paperclip target between paper and purpur

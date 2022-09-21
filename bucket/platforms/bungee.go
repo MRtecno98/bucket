@@ -12,7 +12,7 @@ var BungeeTypePlatform = bucket.PlatformType{
 	Install: InstallBungeecoord,
 	Detect:  DetectBungeecoord,
 	Build: func(context *bucket.OpenContext) bucket.Platform {
-		return &BungeePlatform{bucket.ContextPlatform{Context: context}}
+		return NewBungeePlatform(context) // Go boilerplate
 	},
 }
 
@@ -21,19 +21,23 @@ func init() {
 }
 
 type BungeePlatform struct {
-	bucket.ContextPlatform
+	bucket.PluginCachePlatform
 }
 
 func (p *BungeePlatform) Type() bucket.PlatformType {
 	return BungeeTypePlatform
 }
 
-func (p *BungeePlatform) PluginsFolder() string {
-	return "plugins"
-}
-
-func (p *BungeePlatform) Plugins() ([]bucket.Plugin, error) {
-	return nil, nil // TODO: Analyze plugins in context
+func NewBungeePlatform(context *bucket.OpenContext) *BungeePlatform {
+	return &BungeePlatform{
+		PluginCachePlatform: bucket.PluginCachePlatform{
+			PluginProvider: bucket.JarPluginPlatform[SpigotPluginDescriptor]{
+				ContextPlatform: bucket.ContextPlatform{Context: context},
+				PluginFile:      "bungee.yml",
+				PluginFolder:    "plugins",
+			},
+		},
+	}
 }
 
 func DetectBungeecoord(context *bucket.OpenContext) (bucket.Platform, error) {
@@ -46,7 +50,7 @@ func DetectBungeecoord(context *bucket.OpenContext) (bucket.Platform, error) {
 	}
 
 	if res {
-		return &BungeePlatform{bucket.ContextPlatform{Context: context}}, nil
+		return NewBungeePlatform(context), nil
 	} else {
 		return nil, nil
 	}

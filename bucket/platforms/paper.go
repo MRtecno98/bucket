@@ -12,7 +12,7 @@ var PaperTypePlatform = bucket.PlatformType{
 	Install: InstallPaper,
 	Detect:  DetectPaper,
 	Build: func(context *bucket.OpenContext) bucket.Platform {
-		return &PaperPlatform{SpigotPlatform{bucket.ContextPlatform{Context: context}}}
+		return NewPaperPlatform(context) // Go boilerplate
 	},
 }
 
@@ -28,6 +28,10 @@ func (p *PaperPlatform) Type() bucket.PlatformType {
 	return PaperTypePlatform
 }
 
+func NewPaperPlatform(context *bucket.OpenContext) *PaperPlatform {
+	return &PaperPlatform{*NewSpigotPlatform(context)}
+}
+
 func DetectPaper(context *bucket.OpenContext) (bucket.Platform, error) {
 	res, err := bucket.DetectJarPath(context, func(path string) bool {
 		return strings.Contains(path, "paperclip")
@@ -38,7 +42,7 @@ func DetectPaper(context *bucket.OpenContext) (bucket.Platform, error) {
 	}
 
 	if res {
-		return &PaperPlatform{SpigotPlatform{bucket.ContextPlatform{Context: context}}}, nil
+		return NewPaperPlatform(context), nil
 	} else {
 		return nil, nil
 	}

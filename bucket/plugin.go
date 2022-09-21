@@ -1,6 +1,6 @@
 package bucket
 
-type Plugin struct {
-	Name    string
-	Version string
+type Plugin interface {
+	GetName() string
+	GetVersion() string
 }

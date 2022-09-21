@@ -95,6 +95,7 @@ func main() {
 				Aliases: []string{"a"},
 				Usage:   "adds a plugin to the server",
 				Action: func(c *cli.Context) error {
+					fmt.Println(w.Contexts[0].Platform.Plugins())
 					fmt.Println("add plugin:", c.Args().First())
 					return nil
 				},
