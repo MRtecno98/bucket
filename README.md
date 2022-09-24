@@ -9,9 +9,10 @@ Development is currently ongoing
 # Feature plan
 - [X] Workspace system
 	- [X] Remote workspaces
-- [ ] Keep track of plugins in bucketrc
+- [X] Platform and plugin detection
 - [ ] Download and install plugins
 	- [ ] SpigotMC web scraping for plugins
+	- [ ] Modrinth API integration
 	- [ ] Custom repository protocol
 - [ ] Auto update plugins
 - [ ] Update/switch server jar
