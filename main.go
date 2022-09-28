@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	_ "github.com/MRtecno98/bucket/bucket/platforms"
+	_ "github.com/MRtecno98/bucket/bucket/repositories"
 )
 
 var w *bucket.Workspace

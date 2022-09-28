@@ -18,6 +18,7 @@ type PlatformType struct {
 type PluginProvider interface {
 	PluginsFolder() string
 	Plugins() ([]Plugin, []error, error)
+	LoadPlugin(filename string) (Plugin, error)
 }
 
 type Platform interface {
@@ -80,32 +81,7 @@ func (p JarPluginPlatform[PluginType]) Plugins() ([]Plugin, []error, error) {
 		}
 
 		if strings.HasSuffix(file.Name(), ".jar") {
-			pl, err := func() (Plugin, error) {
-				file, err := p.Context.Fs.Open(p.PluginsFolder() + "/" + file.Name())
-				if err != nil {
-					return nil, err
-				}
-
-				jar, err := OpenJar(file)
-				if err != nil {
-					return nil, err
-				}
-
-				descriptor, err := jar.Open(p.PluginFile)
-				if err != nil {
-					return nil, err
-				}
-
-				data, err := io.ReadAll(descriptor)
-				if err != nil {
-					return nil, err
-				}
-
-				var pl PluginType
-				yaml.Unmarshal(data, &pl)
-
-				return pl, nil
-			}()
+			pl, err := p.LoadPlugin(file.Name())
 
 			if err != nil {
 				errs = append(errs, err)
@@ -121,4 +97,31 @@ func (p JarPluginPlatform[PluginType]) Plugins() ([]Plugin, []error, error) {
 	}
 
 	return plugins, errs, err
+}
+
+func (p JarPluginPlatform[PluginType]) LoadPlugin(filename string) (Plugin, error) {
+	file, err := p.Context.Fs.Open(p.PluginsFolder() + "/" + filename)
+	if err != nil {
+		return nil, err
+	}
+
+	jar, err := OpenJar(file)
+	if err != nil {
+		return nil, err
+	}
+
+	descriptor, err := jar.Open(p.PluginFile)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := io.ReadAll(descriptor)
+	if err != nil {
+		return nil, err
+	}
+
+	var pl PluginType
+	yaml.Unmarshal(data, &pl)
+
+	return pl, nil
 }

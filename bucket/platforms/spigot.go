@@ -9,6 +9,8 @@ import (
 
 type SpigotPluginDescriptor struct {
 	bucket.Plugin
+	bucket.Depender
+	bucket.PluginMetadata
 
 	Name        string   `yaml:"name"`
 	Version     string   `yaml:"version"`
@@ -65,8 +67,38 @@ func (pl SpigotPluginDescriptor) GetName() string {
 	return pl.Name
 }
 
+func (pl SpigotPluginDescriptor) GetIdentifier() string {
+	return pl.GetName()
+}
+
 func (pl SpigotPluginDescriptor) GetVersion() string {
 	return pl.Version
+}
+
+func (pl SpigotPluginDescriptor) GetAuthors() []string {
+	return append(pl.Authors, pl.Author)
+}
+
+func (pl SpigotPluginDescriptor) GetDescription() string {
+	return pl.Description
+}
+
+func (pl SpigotPluginDescriptor) GetWebsite() string {
+	return pl.Website
+}
+
+func (pl SpigotPluginDescriptor) GetDependencies() []bucket.Dependency {
+	var deps []bucket.Dependency = make([]bucket.Dependency, len(pl.Depends)+len(pl.SoftDepends))
+
+	for _, dep := range pl.Depends {
+		deps = append(deps, bucket.Dependency{Name: dep, Required: true})
+	}
+
+	for _, dep := range pl.SoftDepends {
+		deps = append(deps, bucket.Dependency{Name: dep, Required: false})
+	}
+
+	return deps
 }
 
 func NewSpigotPlatform(context *bucket.OpenContext) *SpigotPlatform {
