@@ -75,21 +75,40 @@ func (p JarPluginPlatform[PluginType]) Plugins() ([]Plugin, []error, error) {
 	plugins := make([]Plugin, 0)
 	errs := make([]error, 0)
 
+	c := make(chan struct {
+		Plugin Plugin
+		Error  error
+	}, len(files))
+
+	count := 0
+
 	for _, file := range files {
 		if file.IsDir() {
 			continue
 		}
 
 		if strings.HasSuffix(file.Name(), ".jar") {
-			pl, err := p.LoadPlugin(file.Name())
+			count++
+			go func() {
+				plugin, err := p.LoadPlugin(file.Name())
 
-			if err != nil {
-				errs = append(errs, err)
-				continue
-			}
-
-			plugins = append(plugins, pl)
+				c <- struct {
+					Plugin Plugin
+					Error  error
+				}{plugin, err}
+			}()
 		}
+	}
+
+	for i := 0; i < count; i++ {
+		r := <-c
+
+		if r.Error != nil {
+			errs = append(errs, err)
+			continue
+		}
+
+		plugins = append(plugins, r.Plugin)
 	}
 
 	if len(errs) > 0 {
