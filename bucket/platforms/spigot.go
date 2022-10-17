@@ -10,6 +10,7 @@ import (
 type SpigotPluginDescriptor struct {
 	bucket.Plugin
 	bucket.Depender
+	bucket.LocalPlugin
 	bucket.PluginMetadata
 
 	Name        string   `yaml:"name"`

@@ -1,9 +1,19 @@
 package bucket
 
+import "github.com/MRtecno98/afero"
+
 type Plugin interface {
 	GetName() string
-	GetVersion() string
 	GetIdentifier() string
+}
+
+type LocalPlugin interface {
+	Plugin
+
+	GetVersion() string
+
+	GetPath() string
+	GetFile() afero.File
 }
 
 type Dependency struct {

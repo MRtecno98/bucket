@@ -15,6 +15,10 @@ type PlatformType struct {
 	Build   func(context *OpenContext) Platform
 }
 
+type PlatformCompatible interface {
+	Compatible(PlatformType) bool
+}
+
 type PluginProvider interface {
 	PluginsFolder() string
 	Plugins() ([]Plugin, []error, error)

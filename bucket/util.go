@@ -7,6 +7,8 @@ import (
 	"github.com/MRtecno98/afero/zipfs"
 )
 
+const USER_AGENT = "bucket/0.1 (MRtecno98/bucket)"
+
 func OpenJar(file afero.File) (*afero.Afero, error) {
 	stat, err := file.Stat()
 	if err != nil {

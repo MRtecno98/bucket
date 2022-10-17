@@ -119,9 +119,20 @@ func main() {
 							log.Println(errs, err, pls[0])
 						}
 
-					fmt.Println(w.Contexts[0].Platform.Plugins())
-					fmt.Println("add plugin:", c.Args().First())
-					return nil
+						mpl, err := repositories.NewModrinthRepository().Get(c.Args().First())
+						if err != nil {
+							return err
+						}
+
+						latest, err := mpl.GetLatestVersion()
+						if err != nil {
+							return err
+						}
+
+						log.Println()
+						log.Println(mpl.GetName(), mpl.GetAuthors(), latest.GetName())
+
+						log.Printf("add plugin: %s compat: %v", c.Args().First(), mpl.Compatible(oc.Platform.Type()))
 						return nil
 					})
 				},
