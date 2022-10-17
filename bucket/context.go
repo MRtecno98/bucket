@@ -2,9 +2,12 @@ package bucket
 
 import (
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/MRtecno98/afero"
 	"github.com/MRtecno98/afero/resolver"
+	"github.com/MRtecno98/bucket/bucket/util"
 )
 
 type Context struct {
@@ -23,17 +26,25 @@ type Workspace struct {
 	Contexts []*OpenContext
 }
 
-func (w *Workspace) RunWithContext(name string, action func(*OpenContext)) {
+func (w *Workspace) RunWithContext(name string, action func(*OpenContext, *log.Logger) error) {
 	for _, c := range w.Contexts {
-		fmt.Printf("-------------- Running [ %s ] for < %s >\n", name, c.Name)
-		action(c)
-		fmt.Print("\n\n")
+		fmt.Printf(":%s [%s]\n", name, c.Name)
+
+		out := util.NewCountingWriter(os.Stdout)
+		logger := log.New(out, "", log.Lmsgprefix)
+
+		action(c, logger)
+
+		if out.BytesWritten > 0 {
+			fmt.Print("\n")
+		}
 	}
 }
 
 func (w *Workspace) CloseWorkspace() {
-	w.RunWithContext("close", func(c *OpenContext) {
+	w.RunWithContext("close", func(c *OpenContext, log *log.Logger) error {
 		c.Fs.Close()
+		return nil
 	})
 }
 

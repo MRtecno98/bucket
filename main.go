@@ -90,6 +90,14 @@ func main() {
 			return
 		},
 
+		After: func(c *cli.Context) error {
+			if w != nil {
+				w.CloseWorkspace()
+			}
+
+			return nil
+		},
+
 		Commands: []*cli.Command{
 			{
 				Name:    "add",
