@@ -14,6 +14,8 @@ require golang.org/x/text v0.3.7 // indirect
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/pkg/sftp v1.13.5 // indirect

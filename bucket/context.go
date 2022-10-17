@@ -8,6 +8,7 @@ import (
 	"github.com/MRtecno98/afero"
 	"github.com/MRtecno98/afero/resolver"
 	"github.com/MRtecno98/bucket/bucket/util"
+	"github.com/hashicorp/go-multierror"
 )
 
 type Context struct {
@@ -26,18 +27,30 @@ type Workspace struct {
 	Contexts []*OpenContext
 }
 
-func (w *Workspace) RunWithContext(name string, action func(*OpenContext, *log.Logger) error) {
+func (w *Workspace) RunWithContext(name string, action func(*OpenContext, *log.Logger) error) error {
+	var res error
 	for _, c := range w.Contexts {
 		fmt.Printf(":%s [%s]\n", name, c.Name)
 
 		out := util.NewCountingWriter(os.Stdout)
 		logger := log.New(out, "", log.Lmsgprefix)
 
-		action(c, logger)
+		err := action(c, logger)
+		res = multierror.Append(err, res)
 
 		if out.BytesWritten > 0 {
-			fmt.Print("\n")
+			logger.Print("\n")
 		}
+
+		if err != nil {
+			logger.Printf(":%s [%s] FAILED: %s\n\n", name, c.Name, err)
+		}
+	}
+
+	if res.(*multierror.Error).Len() > 0 {
+		return res
+	} else {
+		return nil
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	_ "github.com/MRtecno98/bucket/bucket/platforms"
+	"github.com/MRtecno98/bucket/bucket/repositories"
 	_ "github.com/MRtecno98/bucket/bucket/repositories"
 )
 
@@ -98,15 +99,31 @@ func main() {
 			return nil
 		},
 
+		ExitErrHandler: func(c *cli.Context, err error) {
+			cli.HandleExitCoder(cli.Exit(err, 1))
+		},
+
 		Commands: []*cli.Command{
 			{
 				Name:    "add",
 				Aliases: []string{"a"},
 				Usage:   "adds a plugin to the server",
 				Action: func(c *cli.Context) error {
+					return w.RunWithContext("test-add", func(oc *bucket.OpenContext, log *log.Logger) error {
+						pls, errs, err := oc.Platform.Plugins()
+						pl, ok := pls[0].(bucket.Depender)
+
+						if ok {
+							log.Println(errs, err, pls[0].GetName(), pl.GetDependencies())
+						} else {
+							log.Println(errs, err, pls[0])
+						}
+
 					fmt.Println(w.Contexts[0].Platform.Plugins())
 					fmt.Println("add plugin:", c.Args().First())
 					return nil
+						return nil
+					})
 				},
 			},
 		},
