@@ -93,8 +93,11 @@ func (p JarPluginPlatform[PluginType]) Plugins() ([]Plugin, []error, error) {
 
 		if strings.HasSuffix(file.Name(), ".jar") {
 			count++
+
+			// Fucking threads, for cycle continues in the background and file is a pointer
+			fileinner := file
 			go func() {
-				plugin, err := p.LoadPlugin(file.Name())
+				plugin, err := p.LoadPlugin(fileinner.Name())
 
 				c <- struct {
 					Plugin Plugin
@@ -108,7 +111,7 @@ func (p JarPluginPlatform[PluginType]) Plugins() ([]Plugin, []error, error) {
 		r := <-c
 
 		if r.Error != nil {
-			errs = append(errs, err)
+			errs = append(errs, r.Error)
 			continue
 		}
 
