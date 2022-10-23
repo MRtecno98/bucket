@@ -159,7 +159,20 @@ func (r *Modrinth) Search(query string) ([]bucket.RemotePlugin, error) {
 }
 
 func (r *Modrinth) SearchAll(query string) ([]bucket.RemotePlugin, error) {
-	panic("not implemented")
+
+func (r *Modrinth) GetVersion(identifier string) (bucket.RemoteVersion, error) {
+	var version ModrinthVersion
+
+	res, err := r.HttpClient.R().SetResult(&version).Get("/project/version/" + identifier)
+	if err != nil {
+		return nil, parseError(err)
+	}
+
+	if res.StatusCode() != 200 {
+		return nil, parseReqError(res)
+	}
+
+	return res.Result().(*ModrinthVersion), nil
 }
 
 func (p ModrinthProject) GetName() string {
@@ -173,6 +186,10 @@ func (p ModrinthProject) GetLatestVersion() (bucket.RemoteVersion, error) {
 	}
 
 	return vers[0], nil
+}
+
+func (p ModrinthProject) GetVersion(identifier string) (bucket.RemoteVersion, error) {
+	return p.repository.GetVersion(identifier)
 }
 
 func (p ModrinthProject) GetVersions() ([]bucket.RemoteVersion, error) {
@@ -194,10 +211,6 @@ func (p ModrinthProject) GetVersions() ([]bucket.RemoteVersion, error) {
 	}
 
 	return remoteVersions, nil
-}
-
-func (p ModrinthProject) GetVersion(identifier string) (bucket.RemoteVersion, error) {
-	panic("not implemented") // TODO: Implement
 }
 
 func (p ModrinthProject) GetVersionIdentifiers() ([]string, error) {
