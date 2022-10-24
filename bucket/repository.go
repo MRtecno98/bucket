@@ -7,8 +7,8 @@ import (
 )
 
 type Repository interface {
-	Search(query string, max int) ([]Plugin, error)
-	SearchAll(query string) ([]Plugin, error)
+	Search(query string, max int) ([]Plugin, int, error)
+	SearchAll(query string) ([]Plugin, int, error)
 
 	Get(identifier string) (RemotePlugin, error)
 	Resolve(plugin Plugin) (RemotePlugin, error)

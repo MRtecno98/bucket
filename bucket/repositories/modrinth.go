@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"strconv"
 
 	"github.com/MRtecno98/bucket/bucket"
 	"github.com/go-resty/resty/v2"
@@ -122,13 +123,34 @@ type ModrinthFile struct {
 	Size     int    `json:"size"`
 }
 
-type Modrinth struct {
-	bucket.HttpRepository
+type ModrinthSummary struct {
+	Hits []struct {
+		ModrinthProject
+
+		ID                string   `json:"project_id"`
+		DisplayCategories []string `json:"display_categories"`
+		GameVersions      []string `json:"versions"`
+		Followers         int      `json:"follows"`
+		Created           string   `json:"date_created"`
+		Updated           string   `json:"date_modified"`
+		License           string   `json:"license"`
+	} `json:"hits"`
+
+	Offset int `json:"offset"`
+	Limit  int `json:"limit"`
+	Total  int `json:"total_hits"`
 }
 
-func NewModrinthRepository() *Modrinth {
+type Modrinth struct {
+	bucket.HttpRepository
+
+	Context *bucket.OpenContext
+}
+
+func NewModrinthRepository(context *bucket.OpenContext) *Modrinth {
 	return &Modrinth{
 		HttpRepository: *bucket.NewHttpRepository(MODRINTH_ENDPOINT),
+		Context:        context,
 	}
 }
 
@@ -154,11 +176,44 @@ func (r *Modrinth) Get(identifier string) (bucket.RemotePlugin, error) {
 	return proj, nil
 }
 
-func (r *Modrinth) Search(query string) ([]bucket.RemotePlugin, error) {
-	panic("not implemented")
+func (r *Modrinth) Search(query string, max int) ([]bucket.RemotePlugin, int, error) {
+	var result ModrinthSummary
+
+	options := map[string]string{
+		"query": query,
+	}
+
+	if max > 0 {
+		options["limit"] = strconv.Itoa(max)
+	}
+
+	res, err := r.HttpClient.R().
+		SetQueryParams(options).
+		SetResult(&result).
+		Get("/search")
+
+	if err != nil {
+		return nil, -1, parseError(err)
+	}
+
+	if res.StatusCode() != 200 {
+		return nil, -1, parseReqError(res)
+	}
+
+	summary := res.Result().(*ModrinthSummary)
+
+	var versions []bucket.RemotePlugin
+	for i := range summary.Hits {
+		summary.Hits[i].repository = r
+		versions = append(versions, &summary.Hits[i])
+	}
+
+	return versions, summary.Total, nil
 }
 
-func (r *Modrinth) SearchAll(query string) ([]bucket.RemotePlugin, error) {
+func (r *Modrinth) SearchAll(query string) ([]bucket.RemotePlugin, int, error) {
+	return r.Search(query, -1)
+}
 
 func (r *Modrinth) GetVersion(identifier string) (bucket.RemoteVersion, error) {
 	var version ModrinthVersion

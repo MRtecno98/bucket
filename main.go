@@ -9,6 +9,7 @@ import (
 
 	"github.com/MRtecno98/afero"
 	"github.com/MRtecno98/bucket/bucket"
+	"github.com/hashicorp/go-multierror"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/slices"
 
@@ -111,18 +112,24 @@ func main() {
 				Action: func(c *cli.Context) error {
 					return w.RunWithContext("test-add", func(oc *bucket.OpenContext, log *log.Logger) error {
 						pls, errs, err := oc.Platform.Plugins()
+						if err != nil || len(errs) > 0 {
+							return multierror.Append(err, errs...)
+						}
+
 						pl, ok := pls[0].(bucket.Depender)
 
 						if ok {
-							log.Println(errs, err, pls[0].GetName(), pl.GetDependencies())
+							log.Println(errs, err, pls[0].GetIdentifier(), pl.GetDependencies())
 						} else {
 							log.Println(errs, err, pls[0])
 						}
 
-						mpl, err := repositories.NewModrinthRepository().Get(c.Args().First())
+						results, _, err := repositories.NewModrinthRepository(oc).SearchAll(c.Args().First())
 						if err != nil {
 							return err
 						}
+
+						mpl := results[0]
 
 						latest, err := mpl.GetLatestVersion()
 						if err != nil {
