@@ -155,7 +155,16 @@ func NewModrinthRepository(context *bucket.OpenContext) *Modrinth {
 }
 
 func (r *Modrinth) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, error) {
-	panic("not implemented")
+	res, tot, err := r.Search(plugin.GetName(), 1)
+	if err != nil {
+		return nil, err
+	}
+
+	if tot == 0 {
+		return nil, parseError(fmt.Errorf("no match found for \"%s\"", plugin.GetName()))
+	}
+
+	return res[0], nil
 }
 
 func (r *Modrinth) Get(identifier string) (bucket.RemotePlugin, error) {
@@ -176,12 +185,8 @@ func (r *Modrinth) Get(identifier string) (bucket.RemotePlugin, error) {
 	return proj, nil
 }
 
-func (r *Modrinth) Search(query string, max int) ([]bucket.RemotePlugin, int, error) {
+func (r *Modrinth) search(options map[string]string, max int) ([]bucket.RemotePlugin, int, error) {
 	var result ModrinthSummary
-
-	options := map[string]string{
-		"query": query,
-	}
 
 	if max > 0 {
 		options["limit"] = strconv.Itoa(max)
@@ -211,8 +216,17 @@ func (r *Modrinth) Search(query string, max int) ([]bucket.RemotePlugin, int, er
 	return versions, summary.Total, nil
 }
 
-func (r *Modrinth) SearchAll(query string) ([]bucket.RemotePlugin, int, error) {
-	return r.Search(query, -1)
+func (r *Modrinth) SearchAll(query string, max int) ([]bucket.RemotePlugin, int, error) {
+	return r.search(map[string]string{
+		"query": query,
+	}, max)
+}
+
+func (r *Modrinth) Search(query string, max int) ([]bucket.RemotePlugin, int, error) {
+	return r.search(map[string]string{
+		"query":  query,
+		"facets": fmt.Sprintf("[[\"categories:%s\"]]", r.Context.PlatformName()),
+	}, max)
 }
 
 func (r *Modrinth) GetVersion(identifier string) (bucket.RemoteVersion, error) {

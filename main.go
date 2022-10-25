@@ -116,30 +116,31 @@ func main() {
 							return multierror.Append(err, errs...)
 						}
 
-						pl, ok := pls[0].(bucket.Depender)
+						for _, v := range pls {
+							pl, ok := v.(bucket.Depender)
 
-						if ok {
-							log.Println(errs, err, pls[0].GetIdentifier(), pl.GetDependencies())
-						} else {
-							log.Println(errs, err, pls[0])
+							if ok {
+								log.Println(errs, err, v.GetIdentifier(), pl.GetDependencies())
+							} else {
+								log.Println(errs, err, v)
+							}
+
+							mpl, err := repositories.NewModrinthRepository(oc).Resolve(v)
+							if err != nil {
+								continue
+							}
+
+							latest, err := mpl.GetLatestVersion()
+							if err != nil {
+								return err
+							}
+
+							log.Println()
+							log.Println(mpl.GetName(), mpl.GetAuthors(), latest.GetName())
+
+							log.Printf("add plugin: %s compat: %v\n\n", c.Args().First(), mpl.Compatible(oc.Platform.Type()))
 						}
 
-						results, _, err := repositories.NewModrinthRepository(oc).SearchAll(c.Args().First())
-						if err != nil {
-							return err
-						}
-
-						mpl := results[0]
-
-						latest, err := mpl.GetLatestVersion()
-						if err != nil {
-							return err
-						}
-
-						log.Println()
-						log.Println(mpl.GetName(), mpl.GetAuthors(), latest.GetName())
-
-						log.Printf("add plugin: %s compat: %v", c.Args().First(), mpl.Compatible(oc.Platform.Type()))
 						return nil
 					})
 				},
