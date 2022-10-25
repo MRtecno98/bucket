@@ -32,14 +32,18 @@ func (w *Workspace) RunWithContext(name string, action func(*OpenContext, *log.L
 	for _, c := range w.Contexts {
 		fmt.Printf(":%s [%s]\n", name, c.Name)
 
-		out := util.NewCountingWriter(os.Stdout)
+		out := util.NewLookbackCountingWriter(os.Stdout, 2)
 		logger := log.New(out, "", log.Lmsgprefix)
 
 		err := action(c, logger)
 		res = multierror.Append(err, res)
 
 		if out.BytesWritten > 0 {
-			logger.Print("\n")
+			for _, v := range out.LastBytes {
+				if v != '\n' {
+					logger.Print("\n")
+				}
+			}
 		}
 
 		if err != nil {
