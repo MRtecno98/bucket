@@ -12,6 +12,15 @@
 			"program": "main.go",
 			// "args": ["-c", ".,mem://"]
 			"args": ["add", "essentialsx"]
+		},
+
+		{
+			"name": "Test launch no multithread",
+			"type": "go",
+			"request": "launch",
+			"mode": "debug",
+			"program": "main.go",
+			"args": ["-j=false", "add", "essentialsx"]
 		}
 	]
 }
