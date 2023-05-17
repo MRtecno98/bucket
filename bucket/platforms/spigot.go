@@ -5,14 +5,10 @@ import (
 	"strings"
 
 	"github.com/MRtecno98/bucket/bucket"
+	"gopkg.in/yaml.v3"
 )
 
 type SpigotPluginDescriptor struct {
-	bucket.Plugin
-	bucket.Depender
-	bucket.LocalPlugin
-	bucket.PluginMetadata
-
 	Name        string   `yaml:"name"`
 	Version     string   `yaml:"version"`
 	MainClass   string   `yaml:"main"`
@@ -107,6 +103,7 @@ func NewSpigotPlatform(context *bucket.OpenContext) *SpigotPlatform {
 		PluginCachePlatform: bucket.PluginCachePlatform{
 			PluginProvider: bucket.JarPluginPlatform[SpigotPluginDescriptor]{
 				ContextPlatform: bucket.ContextPlatform{Context: context},
+				Decode:          bucket.BufferedDecode(yaml.Unmarshal),
 				PluginFile:      "plugin.yml",
 				PluginFolder:    "plugins",
 			},

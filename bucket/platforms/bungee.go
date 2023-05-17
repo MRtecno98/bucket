@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/MRtecno98/bucket/bucket"
+	"gopkg.in/yaml.v3"
 )
 
 var BungeeTypePlatform = bucket.PlatformType{
@@ -33,6 +34,7 @@ func NewBungeePlatform(context *bucket.OpenContext) *BungeePlatform {
 		PluginCachePlatform: bucket.PluginCachePlatform{
 			PluginProvider: bucket.JarPluginPlatform[SpigotPluginDescriptor]{
 				ContextPlatform: bucket.ContextPlatform{Context: context},
+				Decode:          bucket.BufferedDecode(yaml.Unmarshal),
 				PluginFile:      "bungee.yml",
 				PluginFolder:    "plugins",
 			},

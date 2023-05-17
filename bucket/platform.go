@@ -2,10 +2,11 @@ package bucket
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"github.com/MRtecno98/afero"
 )
 
 type PlatformType struct {
@@ -40,10 +41,26 @@ type PluginCachePlatform struct {
 	PluginsCache []Plugin
 }
 
-type JarPluginPlatform[PluginType Plugin] struct {
+type JarPluginPlatform[T Plugin] struct {
 	ContextPlatform
+
 	PluginFile   string
 	PluginFolder string
+
+	Decode Decoder
+}
+
+type Decoder func(pl afero.File, descriptor io.Reader, out any) error
+
+func BufferedDecode(decode func(in []byte, out any) error) Decoder {
+	return func(pl afero.File, descriptor io.Reader, out any) error {
+		data, err := io.ReadAll(descriptor)
+		if err != nil {
+			return err
+		}
+
+		return decode(data, out)
+	}
 }
 
 func (p *PluginCachePlatform) Plugins() ([]Plugin, []error, error) {
@@ -141,13 +158,10 @@ func (p JarPluginPlatform[PluginType]) LoadPlugin(filename string) (Plugin, erro
 		return nil, err
 	}
 
-	data, err := io.ReadAll(descriptor)
-	if err != nil {
-		return nil, err
-	}
+	defer descriptor.Close()
 
-	var pl PluginType
-	yaml.Unmarshal(data, &pl)
+	var plt PluginType
+	err = p.Decode(file, descriptor, &plt)
 
-	return pl, nil
+	return plt, err
 }
