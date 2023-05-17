@@ -90,6 +90,14 @@ func (c *OpenContext) PlatformName() string {
 	}
 }
 
+func (c *OpenContext) Config() *Config {
+	if c.LocalConfig != nil {
+		return c.LocalConfig
+	} else {
+		return GlobalConfig
+	}
+}
+
 func (c *OpenContext) LoadPlatform() error {
 	if c.LocalConfig != nil && c.LocalConfig.Platform != "" {
 		if pltype, ok := platforms[c.LocalConfig.Platform]; ok {

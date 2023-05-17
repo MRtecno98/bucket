@@ -111,28 +111,40 @@ func (p JarPluginPlatform[PluginType]) Plugins() ([]Plugin, []error, error) {
 		if strings.HasSuffix(file.Name(), ".jar") {
 			count++
 
-			// Fucking threads, for cycle continues in the background and file is a pointer
-			fileinner := file
-			go func() {
-				plugin, err := p.LoadPlugin(fileinner.Name())
+			if p.Context.Config().Multithread {
+				// Fucking threads, for cycle continues in the background and file is a pointer
+				fileinner := file
+				go func() {
+					plugin, err := p.LoadPlugin(fileinner.Name())
 
-				c <- struct {
-					Plugin Plugin
-					Error  error
-				}{plugin, err}
-			}()
+					c <- struct {
+						Plugin Plugin
+						Error  error
+					}{plugin, err}
+				}()
+			} else {
+				plugin, err := p.LoadPlugin(file.Name())
+
+				if err != nil {
+					errs = append(errs, fmt.Errorf("unable to load %s: %w", file.Name(), err))
+				}
+
+				plugins = append(plugins, plugin)
+			}
 		}
 	}
 
-	for i := 0; i < count; i++ {
-		r := <-c
+	if p.Context.Config().Multithread {
+		for i := 0; i < count; i++ {
+			r := <-c
 
-		if r.Error != nil {
-			errs = append(errs, r.Error)
-			continue
+			if r.Error != nil {
+				errs = append(errs, r.Error)
+				continue
+			}
+
+			plugins = append(plugins, r.Plugin)
 		}
-
-		plugins = append(plugins, r.Plugin)
 	}
 
 	if len(errs) > 0 {

@@ -13,12 +13,13 @@ import (
 
 const ConfigName string = "bucketrc.yml"
 
-var GlobalConfig *Config
+var GlobalConfig *Config = &Config{}
 
 type Config struct {
 	ActiveContexts []string  `yaml:"active-contexts"`
 	Contexts       []Context `yaml:"contexts"`
 	Platform       string    `yaml:"platform"`
+	Multithread    bool      `yaml:"multithread"`
 }
 
 func (c *Config) MakeWorkspace() (*Workspace, error) {
@@ -81,7 +82,7 @@ func LoadSystemConfig(fs afero.Fs, base string) *Config {
 		}
 	}
 
-	GlobalConfig = &conf
+	GlobalConfig.Collapse(&conf)
 
 	return GlobalConfig
 }

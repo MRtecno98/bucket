@@ -15,7 +15,6 @@ import (
 
 	_ "github.com/MRtecno98/bucket/bucket/platforms"
 	"github.com/MRtecno98/bucket/bucket/repositories"
-	_ "github.com/MRtecno98/bucket/bucket/repositories"
 )
 
 var w *bucket.Workspace
@@ -45,6 +44,14 @@ func main() {
 				Aliases: []string{"f"},
 				Usage:   "selects `FILE` as the configuration file",
 				Value:   bucket.ConfigName,
+			},
+
+			&cli.BoolFlag{
+				Name:        "parallel",
+				Aliases:     []string{"j"},
+				Usage:       "disables multithreaded processes",
+				Value:       true,
+				Destination: &bucket.GlobalConfig.Multithread,
 			},
 		},
 
@@ -101,7 +108,11 @@ func main() {
 		},
 
 		ExitErrHandler: func(c *cli.Context, err error) {
-			cli.HandleExitCoder(cli.Exit(err, 1))
+			if err != nil {
+				cli.HandleExitCoder(cli.Exit(err, 1))
+			} else {
+				cli.HandleExitCoder(err)
+			}
 		},
 
 		Commands: []*cli.Command{
@@ -116,6 +127,8 @@ func main() {
 							return multierror.Append(err, errs...)
 						}
 
+						modrinth := repositories.NewModrinthRepository(oc)
+
 						for _, v := range pls {
 							pl, ok := v.(bucket.Depender)
 
@@ -125,7 +138,7 @@ func main() {
 								log.Println(errs, err, v)
 							}
 
-							mpl, err := repositories.NewModrinthRepository(oc).Resolve(v)
+							mpl, err := modrinth.Resolve(v)
 							if err != nil {
 								continue
 							}
