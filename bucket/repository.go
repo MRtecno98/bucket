@@ -16,6 +16,10 @@ type Repository interface {
 	// SupportsDependencies() bool // Can just check if version.(Depender)
 }
 
+type HashRepository interface {
+	GetByHash(hash string) (Plugin, error)
+}
+
 type RemotePlugin interface {
 	Plugin
 	PluginMetadata
@@ -28,6 +32,7 @@ type RemotePlugin interface {
 }
 
 type RemoteVersion interface {
+	RemotePlugin
 	PlatformCompatible
 
 	GetName() string

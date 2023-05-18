@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
@@ -155,6 +156,20 @@ func NewModrinthRepository(context *bucket.OpenContext) *Modrinth {
 }
 
 func (r *Modrinth) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, error) {
+	if loc, ok := plugin.(bucket.LocalPlugin); ok {
+		h := sha256.New()
+		if _, err := io.Copy(h, loc.GetFile()); err != nil {
+			return nil, err
+		}
+
+		ver, err := r.GetByHash(hex.EncodeToString(h.Sum(nil)))
+		if err != nil {
+			return nil, err
+		}
+
+		return ver.(bucket.RemotePlugin), nil
+	}
+
 	res, tot, err := r.Search(plugin.GetName(), 1)
 	if err != nil {
 		return nil, err
@@ -183,6 +198,24 @@ func (r *Modrinth) Get(identifier string) (bucket.RemotePlugin, error) {
 	proj.repository = r
 
 	return proj, nil
+}
+
+func (r *Modrinth) GetByHash(hash string) (bucket.RemoteVersion, error) {
+	var plugin ModrinthVersion
+
+	res, err := r.HttpClient.R().SetResult(&plugin).Get("/version_file/" + hash)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode() != 200 {
+		return nil, parseReqError(res)
+	}
+
+	ver := res.Result().(*ModrinthVersion)
+	ver.repository = r
+
+	return ver, nil
 }
 
 func (r *Modrinth) search(options map[string]string, max int) ([]bucket.RemotePlugin, int, error) {
