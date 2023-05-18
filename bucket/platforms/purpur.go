@@ -1,11 +1,16 @@
 package platform
 
-import "github.com/MRtecno98/bucket/bucket"
+import (
+	"log"
+	"strings"
+
+	"github.com/MRtecno98/bucket/bucket"
+)
 
 var PurpurTypePlatform = bucket.PlatformType{
 	Name:    "purpur",
 	Install: InstallPurpur,
-	Detect:  nil,
+	Detect:  DetectPurpur,
 	Build: func(context *bucket.OpenContext) bucket.Platform {
 		return NewPurpurPlatform(context) // Go boilerplate
 	},
@@ -27,13 +32,21 @@ func NewPurpurPlatform(context *bucket.OpenContext) *PurpurPlatform {
 	return &PurpurPlatform{*NewPaperPlatform(context)}
 }
 
-// No detector, don't know how to distinguish paperclip target between paper and purpur
-// (But then plugins are the same, so it doesn't really matter)
-// Must be selected manually in bucketrc.yml file
+func DetectPurpur(context *bucket.OpenContext) (bucket.Platform, error) {
+	res, err := bucket.DetectJarPath(context, func(path string) bool {
+		return strings.Contains(path, "purpurmc")
+	})
 
-/* func DetectPurpur(context *bucket.OpenContext) (Platform, error) {
-	// TODO: Find a way to detect purpur
-} */
+	if err != nil {
+		log.Println("error during platform check:", err)
+	}
+
+	if res {
+		return NewPurpurPlatform(context), nil
+	} else {
+		return nil, nil
+	}
+}
 
 func InstallPurpur(context *bucket.OpenContext) error {
 	return nil
