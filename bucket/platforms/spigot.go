@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/MRtecno98/bucket/bucket"
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v2"
 )
 
 type SpigotPluginDescriptor struct {
@@ -60,30 +60,6 @@ func (p SpigotPlatform) Type() bucket.PlatformType {
 	return SpigotTypePlatform
 }
 
-func (pl SpigotPluginDescriptor) GetName() string {
-	return pl.Name
-}
-
-func (pl SpigotPluginDescriptor) GetIdentifier() string {
-	return pl.GetName()
-}
-
-func (pl SpigotPluginDescriptor) GetVersion() string {
-	return pl.Version
-}
-
-func (pl SpigotPluginDescriptor) GetAuthors() []string {
-	return append(pl.Authors, pl.Author)
-}
-
-func (pl SpigotPluginDescriptor) GetDescription() string {
-	return pl.Description
-}
-
-func (pl SpigotPluginDescriptor) GetWebsite() string {
-	return pl.Website
-}
-
 func (pl SpigotPluginDescriptor) GetDependencies() []bucket.Dependency {
 	var deps []bucket.Dependency = make([]bucket.Dependency, 0, len(pl.Depends)+len(pl.SoftDepends))
 
@@ -129,4 +105,28 @@ func DetectSpigot(context *bucket.OpenContext) (bucket.Platform, error) {
 
 func InstallSpigot(context *bucket.OpenContext) error {
 	return nil
+}
+
+func (pl SpigotPluginDescriptor) GetName() string {
+	return pl.Name
+}
+
+func (pl SpigotPluginDescriptor) GetIdentifier() string {
+	return pl.GetName()
+}
+
+func (pl SpigotPluginDescriptor) GetVersion() string {
+	return pl.Version
+}
+
+func (pl SpigotPluginDescriptor) GetAuthors() []string {
+	return append(pl.Authors, pl.Author)
+}
+
+func (pl SpigotPluginDescriptor) GetDescription() string {
+	return pl.Description
+}
+
+func (pl SpigotPluginDescriptor) GetWebsite() string {
+	return pl.Website
 }

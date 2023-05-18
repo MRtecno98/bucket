@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/MRtecno98/bucket/bucket"
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v2"
 )
 
 var BungeeTypePlatform = bucket.PlatformType{
