@@ -8,9 +8,10 @@ import (
 )
 
 var PaperTypePlatform = bucket.PlatformType{
-	Name:    "paper",
-	Install: InstallPaper,
-	Detect:  DetectPaper,
+	Name:       "paper",
+	Compatible: []string{"spigot"},
+	Install:    InstallPaper,
+	Detect:     DetectPaper,
 	Build: func(context *bucket.OpenContext) bucket.Platform {
 		return NewPaperPlatform(context) // Go boilerplate
 	},

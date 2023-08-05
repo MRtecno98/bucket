@@ -8,9 +8,10 @@ import (
 )
 
 var PurpurTypePlatform = bucket.PlatformType{
-	Name:    "purpur",
-	Install: InstallPurpur,
-	Detect:  DetectPurpur,
+	Name:       "purpur",
+	Compatible: []string{"paper"},
+	Install:    InstallPurpur,
+	Detect:     DetectPurpur,
 	Build: func(context *bucket.OpenContext) bucket.Platform {
 		return NewPurpurPlatform(context) // Go boilerplate
 	},

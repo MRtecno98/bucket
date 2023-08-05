@@ -10,10 +10,11 @@ import (
 )
 
 type PlatformType struct {
-	Name    string
-	Install func(context *OpenContext) error
-	Detect  func(context *OpenContext) (Platform, error)
-	Build   func(context *OpenContext) Platform
+	Name       string
+	Compatible []string
+	Install    func(context *OpenContext) error
+	Detect     func(context *OpenContext) (Platform, error)
+	Build      func(context *OpenContext) Platform
 }
 
 type PlatformCompatible interface {
@@ -48,6 +49,10 @@ type JarPluginPlatform[T PluginDescriptor] struct {
 	PluginFolder string
 
 	Decode Decoder
+}
+
+func (t *PlatformType) EveryCompatible() []string {
+	return FindAllCompatible(t)
 }
 
 type Decoder func(pl afero.File, descriptor io.Reader, out any) error

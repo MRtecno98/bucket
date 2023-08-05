@@ -40,9 +40,12 @@ type SpigotPluginDescriptor struct {
 }
 
 var SpigotTypePlatform = bucket.PlatformType{
-	Name:    "spigot",
-	Install: InstallSpigot,
-	Detect:  DetectSpigot,
+	Name: "spigot",
+	// There's actually not a bukkit platform, but there may be
+	// other derivatives of it other than spigot
+	Compatible: []string{"bukkit"},
+	Install:    InstallSpigot,
+	Detect:     DetectSpigot,
 	Build: func(context *bucket.OpenContext) bucket.Platform {
 		return NewSpigotPlatform(context) // Go boilerplate
 	},

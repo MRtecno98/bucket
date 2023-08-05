@@ -95,3 +95,20 @@ func DetectJarPath(context *OpenContext, filter func(path string) bool) (bool, e
 		return err == io.EOF
 	})
 }
+
+func FindAllCompatible(platform *PlatformType) []string {
+	set := map[string]struct{}{}
+	findCompatible(platform.Name, set)
+
+	return maps.Keys(set)
+}
+
+func findCompatible(platform string, out map[string]struct{}) {
+	p, ok := platforms[platform]
+	if ok {
+		for _, plt := range p.Platform.Compatible {
+			out[plt] = struct{}{}
+			findCompatible(plt, out)
+		}
+	}
+}
