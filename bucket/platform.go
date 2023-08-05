@@ -41,7 +41,7 @@ type PluginCachePlatform struct {
 	PluginsCache []Plugin
 }
 
-type JarPluginPlatform[T Plugin] struct {
+type JarPluginPlatform[T PluginDescriptor] struct {
 	ContextPlatform
 
 	PluginFile   string
@@ -175,5 +175,5 @@ func (p JarPluginPlatform[PluginType]) LoadPlugin(filename string) (Plugin, erro
 	var plt PluginType
 	err = p.Decode(file, descriptor, &plt)
 
-	return plt, err
+	return LocalPlugin{PluginDescriptor: plt, File: file}, err
 }

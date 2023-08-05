@@ -7,13 +7,18 @@ type Plugin interface {
 	GetIdentifier() string
 }
 
-type LocalPlugin interface {
-	Plugin
-
+type Versionable interface {
 	GetVersion() string
+}
 
-	GetPath() string
-	GetFile() afero.File
+type PluginDescriptor interface {
+	Plugin
+	Versionable
+}
+
+type LocalPlugin struct {
+	PluginDescriptor
+	File afero.File
 }
 
 type Dependency struct {
