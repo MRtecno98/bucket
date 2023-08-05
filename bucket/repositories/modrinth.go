@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"sort"
 	"strconv"
 
 	"github.com/MRtecno98/bucket/bucket"
@@ -184,7 +185,22 @@ func (r *Modrinth) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, error) {
 		return nil, parseError(fmt.Errorf("no match found for \"%s\"", plugin.GetName()))
 	}
 
-	return res[0], nil
+	// TODO: Move this in a more general place for all repositories
+	keys := make([]float64, 0, len(res))
+	scores := make(map[float64]bucket.RemotePlugin)
+	for _, pl := range res {
+		score := bucket.ComparisonIndex(plugin, pl)
+		keys = append(keys, score)
+		scores[score] = pl
+	}
+
+	sort.Float64s(keys)
+	if keys[0] < 0.5 {
+		return nil, parseError(fmt.Errorf(
+			"%d matches found for \"%s\" but none satisfy similarity treshold, closest match was %.4f", tot, plugin.GetName(), keys[0]))
+	}
+
+	return scores[keys[0]], nil
 }
 
 func (r *Modrinth) Get(identifier string) (bucket.RemotePlugin, error) {
@@ -205,7 +221,7 @@ func (r *Modrinth) Get(identifier string) (bucket.RemotePlugin, error) {
 	return proj, nil
 }
 
-func (r *Modrinth) GetByHash(hash string) (bucket.RemoteVersion, error) {
+func (r *Modrinth) GetByHash(sha1 string) (bucket.RemoteVersion, error) {
 	var plugin ModrinthVersion
 
 	res, err := r.makreq().SetResult(&plugin).Get("/version_file/" + sha1)
@@ -218,7 +234,13 @@ func (r *Modrinth) GetByHash(hash string) (bucket.RemoteVersion, error) {
 	}
 
 	ver := res.Result().(*ModrinthVersion)
-	ver.repository = r
+
+	prj, err := r.Get(ver.ProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("%v: version file found but associated project is unavailable", err)
+	}
+
+	ver.ModrinthProject = *(prj.(*ModrinthProject))
 
 	return ver, nil
 }

@@ -141,8 +141,11 @@ func main() {
 
 							mpl, err := modrinth.Resolve(v)
 							if err != nil {
+								log.Printf("%v\n\n", err)
 								continue
 							}
+
+							log.Printf("Found repo match ----------------------- Similarity index: %f\n", bucket.ComparisonIndex(v, mpl))
 
 							latest, err := mpl.GetLatestVersion()
 							if err != nil {
