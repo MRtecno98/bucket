@@ -164,17 +164,15 @@ func (r *Modrinth) makreq() *resty.Request {
 
 func (r *Modrinth) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, error) {
 	if loc, ok := plugin.(bucket.LocalPlugin); ok {
-		h := sha256.New()
-		if _, err := io.Copy(h, loc.GetFile()); err != nil {
+		h := sha1.New()
+		if _, err := io.Copy(h, loc.File); err != nil {
 			return nil, err
 		}
 
 		ver, err := r.GetByHash(hex.EncodeToString(h.Sum(nil)))
-		if err != nil {
-			return nil, err
-		}
-
-		return ver.(bucket.RemotePlugin), nil
+		if err == nil {
+			return ver.(*ModrinthVersion).ModrinthProject, nil
+		} // else try to resolve by name
 	}
 
 	res, tot, err := r.Search(plugin.GetName(), 1)
