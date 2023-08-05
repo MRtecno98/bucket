@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -127,7 +128,7 @@ func main() {
 							return multierror.Append(err, errs...)
 						}
 
-						modrinth := repositories.NewModrinthRepository(oc)
+						modrinth := repositories.NewModrinthRepository(context.Background(), oc)
 
 						for _, v := range pls {
 							pl, ok := v.(bucket.Depender)

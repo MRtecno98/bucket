@@ -1,6 +1,7 @@
 package bucket
 
 import (
+	"context"
 	"io"
 
 	"github.com/go-resty/resty/v2"
@@ -45,6 +46,12 @@ type RemoteFile interface {
 	Optional() bool
 	Download() (io.ReadCloser, error)
 	Verify() error
+}
+
+type LockRepository struct {
+	Repository
+
+	Lock context.Context
 }
 
 type HttpRepository struct {

@@ -1,7 +1,8 @@
 package repositories
 
 import (
-	"crypto/sha256"
+	"context"
+	"crypto/sha1"
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
@@ -144,15 +145,21 @@ type ModrinthSummary struct {
 
 type Modrinth struct {
 	bucket.HttpRepository
+	bucket.LockRepository
 
 	Context *bucket.OpenContext
 }
 
-func NewModrinthRepository(context *bucket.OpenContext) *Modrinth {
+func NewModrinthRepository(lock context.Context, context *bucket.OpenContext) *Modrinth {
 	return &Modrinth{
 		HttpRepository: *bucket.NewHttpRepository(MODRINTH_ENDPOINT),
+		LockRepository: bucket.LockRepository{Lock: lock},
 		Context:        context,
 	}
+}
+
+func (r *Modrinth) makreq() *resty.Request {
+	return r.HttpClient.R().SetContext(r.Lock)
 }
 
 func (r *Modrinth) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, error) {
@@ -185,7 +192,7 @@ func (r *Modrinth) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, error) {
 func (r *Modrinth) Get(identifier string) (bucket.RemotePlugin, error) {
 	var plugin ModrinthProject
 
-	res, err := r.HttpClient.R().SetResult(&plugin).Get("/project/" + identifier)
+	res, err := r.makreq().SetResult(&plugin).Get("/project/" + identifier)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +210,7 @@ func (r *Modrinth) Get(identifier string) (bucket.RemotePlugin, error) {
 func (r *Modrinth) GetByHash(hash string) (bucket.RemoteVersion, error) {
 	var plugin ModrinthVersion
 
-	res, err := r.HttpClient.R().SetResult(&plugin).Get("/version_file/" + hash)
+	res, err := r.makreq().SetResult(&plugin).Get("/version_file/" + sha1)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +232,7 @@ func (r *Modrinth) search(options map[string]string, max int) ([]bucket.RemotePl
 		options["limit"] = strconv.Itoa(max)
 	}
 
-	res, err := r.HttpClient.R().
+	res, err := r.makreq().
 		SetQueryParams(options).
 		SetResult(&result).
 		Get("/search")
@@ -265,7 +272,7 @@ func (r *Modrinth) Search(query string, max int) ([]bucket.RemotePlugin, int, er
 func (r *Modrinth) GetVersion(identifier string) (bucket.RemoteVersion, error) {
 	var version ModrinthVersion
 
-	res, err := r.HttpClient.R().SetResult(&version).Get("/project/version/" + identifier)
+	res, err := r.makreq().SetResult(&version).Get("/project/version/" + identifier)
 	if err != nil {
 		return nil, parseError(err)
 	}
