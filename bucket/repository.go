@@ -8,11 +8,11 @@ import (
 )
 
 type Repository interface {
-	Search(query string, max int) ([]Plugin, int, error)
-	SearchAll(query string, max int) ([]Plugin, int, error)
+	Search(query string, max int) ([]RemotePlugin, int, error)
+	SearchAll(query string, max int) ([]RemotePlugin, int, error)
 
 	Get(identifier string) (RemotePlugin, error)
-	Resolve(plugin Plugin) (RemotePlugin, error)
+	Resolve(plugin Plugin) (RemotePlugin, []RemotePlugin, error)
 
 	// SupportsDependencies() bool // Can just check if version.(Depender)
 }
