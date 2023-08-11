@@ -293,6 +293,11 @@ func (r *Modrinth) SearchAll(query string, max int) ([]bucket.RemotePlugin, int,
 }
 
 func (r *Modrinth) Search(query string, max int) ([]bucket.RemotePlugin, int, error) {
+	loaders := r.Context.Platform.Type().EveryCompatible()
+	for i, v := range loaders {
+		loaders[i] = fmt.Sprintf("\"categories:%s\"", v)
+	}
+
 	return r.search(map[string]string{
 		"query":  query,
 		"facets": fmt.Sprintf("[[\"categories:%s\"]]", r.Context.PlatformName()),
