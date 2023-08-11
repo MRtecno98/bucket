@@ -40,6 +40,8 @@ func main() {
 				DefaultText: "current directory",
 			},
 
+			// TODO: Add repositories argument
+
 			&cli.StringFlag{
 				Name:    "config",
 				Aliases: []string{"f"},
@@ -82,6 +84,14 @@ func main() {
 				}
 			}
 
+			if len(bucket.GlobalConfig.Repositories) == 0 {
+				bucket.GlobalConfig.Repositories = []bucket.RepositoryConfig{
+					// Default repositories
+					{Name: repositories.MODRINTH_REPOSITORY, Options: map[string]string{}},
+					{Name: repositories.SPIGOTMC_REPOSITORY, Options: map[string]string{}},
+				}
+			}
+
 			w, err = bucket.GlobalConfig.MakeWorkspace()
 
 			if err != nil {
@@ -94,7 +104,13 @@ func main() {
 				fmt.Printf("\tName: %s\n", v.Name)
 				fmt.Printf("\t\tURL: %s\n", v.URL)
 				fmt.Printf("\t\tFilesystem: %s %v\n", v.Fs.Name(), v.Fs)
-				fmt.Printf("\t\tPlatform: %v\n\n", v.PlatformName())
+				fmt.Printf("\t\tPlatform: %v\n", v.PlatformName())
+				fmt.Printf("\t\tRepositories: %d\n", len(v.Repositories))
+				for i, r := range v.Repositories {
+					fmt.Printf("\t\t  - %s: %v\n", v.Config().Repositories[i].Name, r)
+				}
+
+				fmt.Println()
 			}
 
 			return
