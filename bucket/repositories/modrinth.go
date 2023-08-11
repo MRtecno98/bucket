@@ -28,6 +28,7 @@ type ModrinthSide string
 type ModrinthType string
 type ModrinthDependency string
 type ModrinthVersionType string
+type ModrinthMonetization string
 
 const (
 	SIDE_REQUIRED    ModrinthSide = "required"
@@ -46,6 +47,10 @@ const (
 	MODRINTH_RELEASE ModrinthVersionType = "release"
 	MODRINTH_BETA    ModrinthVersionType = "beta"
 	MODRINTH_ALPHA   ModrinthVersionType = "alpha"
+
+	MODRINTH_MONETIZED         ModrinthMonetization = "monetized"
+	MODRINTH_DEMONETIZED       ModrinthMonetization = "demonetized"
+	MODRINTH_FORCE_DEMONETIZED ModrinthMonetization = "force-demonetized"
 )
 
 type ModrinthProject struct {
@@ -128,18 +133,28 @@ type ModrinthFile struct {
 	Size     int    `json:"size"`
 }
 
-type ModrinthSummary struct {
-	Hits []struct {
-		ModrinthProject
+type ModrinthProjectSummary struct {
+	ModrinthProject
 
-		ID                string   `json:"project_id"`
-		DisplayCategories []string `json:"display_categories"`
-		GameVersions      []string `json:"versions"`
-		Followers         int      `json:"follows"`
-		Created           string   `json:"date_created"`
-		Updated           string   `json:"date_modified"`
-		License           string   `json:"license"`
-	} `json:"hits"`
+	ID                string               `json:"project_id"`
+	IconURL           string               `json:"icon_url"`
+	Color             int                  `json:"color"`
+	ThreadID          string               `json:"thread_id"`
+	Monetization      ModrinthMonetization `json:"monetization_status"`
+	Author            string               `json:"author"`
+	DisplayCategories []string             `json:"display_categories"`
+	GameVersions      []string             `json:"versions"`
+	Followers         int                  `json:"follows"`
+	Created           string               `json:"date_created"`
+	Updated           string               `json:"date_modified"`
+	LatestGameVersion string               `json:"latest_version"`
+	License           string               `json:"license"`
+	FeaturedGallery   string               `json:"featured_gallery"`
+	Dependencies      []string             `json:"dependencies"`
+}
+
+type ModrinthSummary struct {
+	Hits []ModrinthProjectSummary `json:"hits"`
 
 	Offset int `json:"offset"`
 	Limit  int `json:"limit"`
@@ -282,6 +297,22 @@ func (r *Modrinth) Search(query string, max int) ([]bucket.RemotePlugin, int, er
 		"query":  query,
 		"facets": fmt.Sprintf("[[\"categories:%s\"]]", r.Context.PlatformName()),
 	}, max)
+}
+
+func (s *ModrinthProjectSummary) UnmarshalJSON(data []byte) error {
+	type Alias ModrinthProjectSummary
+	if err := json.Unmarshal(data, (*Alias)(s)); err != nil {
+		return err
+	}
+
+	s.ModrinthProject.ID = s.ID
+	s.ModrinthProject.Versions = s.GameVersions
+	s.ModrinthProject.Followers = s.Followers
+	s.ModrinthProject.Published = s.Created
+	s.ModrinthProject.Updated = s.Updated
+	s.ModrinthProject.License.ID = s.License
+
+	return nil
 }
 
 func (r *Modrinth) GetVersion(identifier string) (bucket.RemoteVersion, error) {
