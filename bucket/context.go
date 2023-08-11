@@ -1,15 +1,19 @@
 package bucket
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
+	"sort"
 
 	"github.com/MRtecno98/afero"
 	"github.com/MRtecno98/afero/resolver"
 	"github.com/MRtecno98/bucket/bucket/util"
 	"github.com/hashicorp/go-multierror"
 )
+
+const SIMILARITY_THRESHOLD float64 = 0.5
 
 type Context struct {
 	Name string `yaml:"name"`
@@ -18,9 +22,10 @@ type Context struct {
 
 type OpenContext struct {
 	Context
-	Fs          afero.Afero
-	LocalConfig *Config
-	Platform    Platform
+	Fs           afero.Afero
+	LocalConfig  *Config
+	Platform     Platform
+	Repositories []Repository
 }
 
 type Workspace struct {
@@ -79,6 +84,10 @@ func (c Context) OpenContext() (*OpenContext, error) {
 
 	ctx := &OpenContext{Context: c, Fs: afero.Afero{Fs: fs}, LocalConfig: conf}
 
+	if err := ctx.LoadRepositories(); err != nil {
+		return nil, err
+	}
+
 	return ctx, ctx.LoadPlatform()
 }
 
@@ -112,6 +121,60 @@ func (c *OpenContext) LoadPlatform() error {
 		}
 
 		c.Platform = plat
+	}
+
+	return nil
+}
+
+func (c *OpenContext) ResolvePlugin(plugin Plugin) (RemotePlugin, error) {
+	var gerr error
+
+	for _, r := range c.Repositories {
+		if _, candidates, err := r.Resolve(plugin); err != nil {
+			gerr = multierror.Append(gerr, err)
+			continue
+		} else if len(candidates) > 0 {
+			keys := make([]float64, 0, len(candidates))
+			scores := make(map[float64]RemotePlugin)
+			for _, pl := range candidates {
+				if pl.Compatible(c.Platform.Type()) {
+					score := ComparisonIndex(plugin, pl)
+					keys = append(keys, score)
+					scores[score] = pl
+				}
+			}
+
+			if len(keys) == 0 {
+				gerr = multierror.Append(gerr, fmt.Errorf(
+					"%d candidates found for \"%s\" but none are compatible with platform \"%s\"",
+					len(candidates), plugin.GetName(), c.Platform.Type().Name))
+				continue
+			}
+
+			sort.Float64s(keys)
+			match := keys[len(keys)-1]
+
+			if match < SIMILARITY_THRESHOLD {
+				gerr = multierror.Append(gerr, fmt.Errorf(
+					"%d candidates found for \"%s\" but none satisfy similarity treshold, closest match was %f",
+					len(candidates), plugin.GetName(), match))
+				continue
+			}
+
+			return scores[match], nil
+		}
+	}
+
+	return nil, gerr
+}
+
+func (c *OpenContext) LoadRepositories() error {
+	for _, v := range c.Config().Repositories {
+		if constr, ok := Repositories[v.Name]; ok {
+			c.Repositories = append(c.Repositories, constr(context.Background(), c, v.Options)) // TODO: Use another context
+		} else {
+			return fmt.Errorf("unknown repository: %s", v.Name)
+		}
 	}
 
 	return nil

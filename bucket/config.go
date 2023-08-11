@@ -16,10 +16,16 @@ const ConfigName string = "bucketrc.yml"
 var GlobalConfig *Config = &Config{}
 
 type Config struct {
-	ActiveContexts []string  `yaml:"active-contexts"`
-	Contexts       []Context `yaml:"contexts"`
-	Platform       string    `yaml:"platform"`
-	Multithread    bool      `yaml:"multithread"`
+	ActiveContexts []string           `yaml:"active-contexts"`
+	Contexts       []Context          `yaml:"contexts"`
+	Platform       string             `yaml:"platform"`
+	Multithread    bool               `yaml:"multithread"`
+	Repositories   []RepositoryConfig `yaml:"repositories"`
+}
+
+type RepositoryConfig struct {
+	Name    string            `yaml:"name"`
+	Options map[string]string `yaml:"options"`
 }
 
 func (c *Config) MakeWorkspace() (*Workspace, error) {

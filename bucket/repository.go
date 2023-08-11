@@ -67,3 +67,11 @@ func NewHttpRepository(endpoint string) *HttpRepository {
 		HttpClient: resty.New().SetHeader("User-Agent", USER_AGENT).SetBaseURL(endpoint),
 	}
 }
+
+var Repositories = make(map[string]RepositoryConstructor)
+
+type RepositoryConstructor func(context.Context, *OpenContext, map[string]string) Repository
+
+func RegisterRepository(name string, constr RepositoryConstructor) {
+	Repositories[name] = constr
+}

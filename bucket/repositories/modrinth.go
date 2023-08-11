@@ -22,6 +22,8 @@ import (
 
 const MODRINTH_ENDPOINT = "https://api.modrinth.com/v2"
 
+const MODRINTH_REPOSITORY = "modrinth"
+
 type ModrinthSide string
 type ModrinthType string
 type ModrinthDependency string
@@ -151,6 +153,13 @@ type Modrinth struct {
 	Context *bucket.OpenContext
 }
 
+func init() {
+	bucket.RegisterRepository(MODRINTH_REPOSITORY,
+		func(ctx context.Context, oc *bucket.OpenContext, opts map[string]string) bucket.Repository {
+			return NewModrinthRepository(ctx, oc) // Go boilerplate
+		})
+}
+
 func NewModrinthRepository(lock context.Context, context *bucket.OpenContext) *Modrinth {
 	return &Modrinth{
 		HttpRepository: *bucket.NewHttpRepository(MODRINTH_ENDPOINT),
@@ -163,44 +172,30 @@ func (r *Modrinth) makreq() *resty.Request {
 	return r.HttpClient.R().SetContext(r.Lock)
 }
 
-func (r *Modrinth) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, error) {
+func (r *Modrinth) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, []bucket.RemotePlugin, error) {
 	if loc, ok := plugin.(bucket.LocalPlugin); ok {
 		h := sha1.New()
 		if _, err := io.Copy(h, loc.File); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		ver, err := r.GetByHash(hex.EncodeToString(h.Sum(nil)))
 		if err == nil {
-			return ver.(*ModrinthVersion).ModrinthProject, nil
+			res := ver.(*ModrinthVersion).ModrinthProject
+			return res, []bucket.RemotePlugin{res}, nil
 		} // else try to resolve by name
 	}
 
-	res, tot, err := r.Search(plugin.GetName(), 1)
+	res, tot, err := r.Search(plugin.GetName(), 5)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if tot == 0 {
-		return nil, parseError(fmt.Errorf("no match found for \"%s\"", plugin.GetName()))
+		return nil, nil, parseError(fmt.Errorf("no match found for \"%s\"", plugin.GetName()))
 	}
 
-	// TODO: Move this in a more general place for all repositories
-	keys := make([]float64, 0, len(res))
-	scores := make(map[float64]bucket.RemotePlugin)
-	for _, pl := range res {
-		score := bucket.ComparisonIndex(plugin, pl)
-		keys = append(keys, score)
-		scores[score] = pl
-	}
-
-	sort.Float64s(keys)
-	if keys[0] < 0.5 {
-		return nil, parseError(fmt.Errorf(
-			"%d matches found for \"%s\" but none satisfy similarity treshold, closest match was %.4f", tot, plugin.GetName(), keys[0]))
-	}
-
-	return scores[keys[0]], nil
+	return res[0], res, nil
 }
 
 func (r *Modrinth) Get(identifier string) (bucket.RemotePlugin, error) {
