@@ -51,8 +51,8 @@ type JarPluginPlatform[T PluginDescriptor] struct {
 	Decode Decoder
 }
 
-func (t *PlatformType) EveryCompatible() []string {
-	return FindAllCompatible(t)
+func (t PlatformType) EveryCompatible() []string {
+	return FindAllCompatible(&t)
 }
 
 type Decoder func(pl afero.File, descriptor io.Reader, out any) error

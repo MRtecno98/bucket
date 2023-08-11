@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/MRtecno98/bucket/bucket"
 	"github.com/go-resty/resty/v2"
@@ -300,7 +300,7 @@ func (r *Modrinth) Search(query string, max int) ([]bucket.RemotePlugin, int, er
 
 	return r.search(map[string]string{
 		"query":  query,
-		"facets": fmt.Sprintf("[[\"categories:%s\"]]", r.Context.PlatformName()),
+		"facets": fmt.Sprintf("[[%s]]", strings.Join(loaders, ", ")),
 	}, max)
 }
 
@@ -318,6 +318,10 @@ func (s *ModrinthProjectSummary) UnmarshalJSON(data []byte) error {
 	s.ModrinthProject.License.ID = s.License
 
 	return nil
+}
+
+func (s *ModrinthProjectSummary) GetAuthors() []string {
+	return []string{s.Author}
 }
 
 func (r *Modrinth) GetVersion(identifier string) (bucket.RemoteVersion, error) {
@@ -415,7 +419,14 @@ func (p ModrinthVersion) GetDependencies() []bucket.Dependency {
 }
 
 func (p ModrinthVersion) Compatible(platform bucket.PlatformType) bool {
-	return slices.Contains(p.Loaders, platform.Name)
+	comp := platform.EveryCompatible()
+	for _, v := range p.Loaders {
+		if slices.Contains(comp, v) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (p ModrinthVersion) GetFiles() ([]bucket.RemoteFile, error) {
