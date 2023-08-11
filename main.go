@@ -1,12 +1,12 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/MRtecno98/afero"
 	"github.com/MRtecno98/bucket/bucket"
@@ -139,12 +139,21 @@ func main() {
 				Usage:   "adds a plugin to the server",
 				Action: func(c *cli.Context) error {
 					return w.RunWithContext("test-add", func(oc *bucket.OpenContext, log *log.Logger) error {
+						if oc.Platform == nil {
+							// TODO: make so that we don't have to repeat this for every action
+							return fmt.Errorf("no platform detected")
+						}
+
 						pls, errs, err := oc.Platform.Plugins()
 						if err != nil || len(errs) > 0 {
 							return multierror.Append(err, errs...)
 						}
 
-						modrinth := repositories.NewModrinthRepository(context.Background(), oc)
+						plchan := make(chan bucket.RemotePlugin)
+						errchan := make(chan error)
+						orgchan := make(chan bucket.Plugin)
+
+						var wg sync.WaitGroup
 
 						for _, v := range pls {
 							pl, ok := v.(bucket.Depender)
@@ -152,16 +161,35 @@ func main() {
 							if ok {
 								log.Println(errs, err, v.GetIdentifier(), pl.GetDependencies())
 							} else {
-								log.Println(errs, err, v)
+								log.Println(errs, err, v.GetName(), v.GetIdentifier())
 							}
 
-							mpl, err := modrinth.Resolve(v)
+							wg.Add(1)
+
+							vv := v
+							go func() {
+								pl, err := oc.ResolvePlugin(vv)
+								wg.Done()
+								plchan <- pl
+								errchan <- err
+								orgchan <- vv
+							}()
+						}
+
+						wg.Wait()
+
+						for i := 0; i < len(pls); i++ {
+							mpl, err, org := <-plchan, <-errchan, <-orgchan
+
 							if err != nil {
 								log.Printf("%v\n\n", err)
 								continue
+							} else if mpl == nil {
+								log.Printf("no match found for %s\n\n", org.GetName())
+								continue
 							}
 
-							log.Printf("Found repo match ----------------------- Similarity index: %f\n", bucket.ComparisonIndex(v, mpl))
+							log.Printf("Found repo match ----------------------- Similarity index: %f\n", bucket.ComparisonIndex(org, mpl))
 
 							latest, err := mpl.GetLatestVersion()
 							if err != nil {
