@@ -14,6 +14,7 @@ type Versionable interface {
 type PluginDescriptor interface {
 	Plugin
 	Versionable
+	PluginMetadata
 }
 
 type LocalPlugin struct {

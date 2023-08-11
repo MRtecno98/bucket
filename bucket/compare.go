@@ -17,11 +17,16 @@ func ComparisonIndex(a, b Plugin) float64 {
 			// index *= StringSimilarity(a.GetDescription(), b.GetDescription())
 			// index *= StringSimilarity(a.GetWebsite(), b.GetWebsite())
 
+			listA, listB := a.GetAuthors(), b.GetAuthors()
+			if len(listA) > len(listB) {
+				listA, listB = listB, listA
+			}
+
 			maxes := make([]int, 0)
-			for _, authA := range a.GetAuthors() { // Cycle every author in A
+			for _, authA := range listA { // Cycle every author in A
 				maxindex := 0
-				var max float64 = 0
-				for i, authB := range b.GetAuthors() { // Check every author in B
+				var max float64 = -1
+				for i, authB := range listB { // Check every author in B
 					if slices.Contains(maxes, i) { // Ignore previously paired authors
 						continue
 					}
@@ -31,6 +36,10 @@ func ComparisonIndex(a, b Plugin) float64 {
 					if tmax != max {
 						maxindex = i
 						max = tmax
+					}
+
+					if max >= 1 {
+						break
 					}
 				}
 
