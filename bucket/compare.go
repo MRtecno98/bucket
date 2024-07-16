@@ -2,9 +2,13 @@ package bucket
 
 import (
 	"math"
+	"strings"
 
+	"github.com/gnames/levenshtein"
 	"golang.org/x/exp/slices"
 )
+
+var lvh = levenshtein.NewLevenshtein()
 
 func ComparisonIndex(a, b Plugin) float64 {
 	var index float64 = 1
@@ -17,7 +21,8 @@ func ComparisonIndex(a, b Plugin) float64 {
 			// index *= StringSimilarity(a.GetDescription(), b.GetDescription())
 			// index *= StringSimilarity(a.GetWebsite(), b.GetWebsite())
 
-			listA, listB := a.GetAuthors(), b.GetAuthors()
+			listA, listB := splitAuthors(a.GetAuthors()), splitAuthors(b.GetAuthors())
+
 			if len(listA) > len(listB) {
 				listA, listB = listB, listA
 			}
@@ -56,23 +61,21 @@ func ComparisonIndex(a, b Plugin) float64 {
 	return index
 }
 
+// Inverse of the Levenshtein distance normalized between 0 and 1
 func StringSimilarity(a, b string) float64 {
-	diff := 0
+	return 1 - float64(lvh.Compare(a, b).EditDist)/float64(max(len(a), len(b)))
+}
 
-	if len(b) > len(a) {
-		a, b = b, a
-	}
-
-	for i, c := range a {
-		if i >= len(b) {
-			diff++
-		} else {
-			if c != rune(b[i]) {
-				diff++
-			}
+// Some people write multiple authors in a single string
+// apparently, and that would be a problem for comparison
+func splitAuthors(authors []string) []string {
+	var res []string
+	for _, author := range authors {
+		spl := strings.Split(author, ",")
+		for _, s := range spl {
+			res = append(res, strings.TrimSpace(s))
 		}
 	}
 
-	// inverse of differences normalized over string length
-	return 1 - float64(diff)/float64(len(a))
+	return res
 }
