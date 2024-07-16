@@ -169,13 +169,24 @@ func (r *SpigotResource) GetVersionIdentifiers() ([]string, error) {
 	return identifiers, nil
 }
 
-func (r *SpigotResource) Compatible(platform bucket.PlatformType) bool {
-	latest, err := r.GetLatestVersion()
+func (r *SpigotResource) GetLatestCompatible(platform bucket.PlatformType) (bucket.RemoteVersion, error) {
+	vers, err := r.GetVersions()
 	if err != nil {
-		return false // If we fail to retrieve a version we can't be sure it's compatible
+		return nil, err
 	}
 
-	return latest.Compatible(platform)
+	for _, v := range vers {
+		if v.Compatible(platform) {
+			return v, nil
+		}
+	}
+
+	return nil, parseError(fmt.Errorf("no compatible version found"))
+}
+
+func (r *SpigotResource) Compatible(platform bucket.PlatformType) bool {
+	ver, err := r.GetLatestCompatible(platform)
+	return err == nil && ver != nil
 }
 
 func (r *SpigotResource) GetIdentifier() string {

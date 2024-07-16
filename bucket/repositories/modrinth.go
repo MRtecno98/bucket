@@ -381,13 +381,24 @@ func (p ModrinthProject) GetVersionIdentifiers() ([]string, error) {
 	return p.Versions, nil
 }
 
-func (p ModrinthProject) Compatible(platform bucket.PlatformType) bool {
-	latest, err := p.GetLatestVersion()
+func (p ModrinthProject) GetLatestCompatible(platform bucket.PlatformType) (bucket.RemoteVersion, error) {
+	versions, err := p.GetVersions()
 	if err != nil {
-		return false // If we fail to retrieve a version we can't be sure it's compatible
+		return nil, err
 	}
 
-	return latest.Compatible(platform)
+	for _, v := range versions {
+		if v.Compatible(platform) {
+			return v, nil
+		}
+	}
+
+	return nil, parseError(fmt.Errorf("no compatible version found"))
+}
+
+func (p ModrinthProject) Compatible(platform bucket.PlatformType) bool {
+	ver, err := p.GetLatestCompatible(platform)
+	return err == nil && ver != nil
 }
 
 func (p ModrinthProject) GetIdentifier() string {

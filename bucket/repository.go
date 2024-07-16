@@ -26,6 +26,7 @@ type RemotePlugin interface {
 	PluginMetadata
 	PlatformCompatible
 
+	GetLatestCompatible(PlatformType) (RemoteVersion, error)
 	GetLatestVersion() (RemoteVersion, error)
 	GetVersions() ([]RemoteVersion, error)
 	GetVersion(identifier string) (RemoteVersion, error)
