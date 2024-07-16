@@ -2,6 +2,7 @@ package platforms
 
 import (
 	"log"
+	"slices"
 	"strings"
 
 	"github.com/MRtecno98/bucket/bucket"
@@ -123,7 +124,9 @@ func (pl SpigotPluginDescriptor) GetVersion() string {
 }
 
 func (pl SpigotPluginDescriptor) GetAuthors() []string {
-	return append(pl.Authors, pl.Author)
+	return slices.DeleteFunc(append(pl.Authors, pl.Author), func(s string) bool {
+		return s == ""
+	})
 }
 
 func (pl SpigotPluginDescriptor) GetDescription() string {
