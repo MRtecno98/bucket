@@ -22,3 +22,14 @@ func OpenJar(file afero.File) (*afero.Afero, error) {
 
 	return &afero.Afero{Fs: zipfs.New(reader)}, nil
 }
+
+func Decamel(camel string, sep string) string {
+	var result string
+	for i, r := range camel {
+		if i > 0 && 'A' <= r && r <= 'Z' {
+			result += sep
+		}
+		result += string(r)
+	}
+	return result
+}

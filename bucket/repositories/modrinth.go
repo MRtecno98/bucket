@@ -201,9 +201,16 @@ func (r *Modrinth) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, []bucket.
 		} // else try to resolve by name
 	}
 
-	res, tot, err := r.Search(plugin.GetName(), 5)
-	if err != nil {
-		return nil, nil, err
+	var tot int
+	var res []bucket.RemotePlugin
+	for _, name := range []string{plugin.GetName(), bucket.Decamel(plugin.GetName(), " ")} {
+		cand, n, err := r.Search(name, 5)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		tot += n
+		res = append(res, cand...)
 	}
 
 	if tot == 0 {
