@@ -4,6 +4,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -30,6 +31,7 @@ type SpigotResource struct {
 	spiget.Resource
 
 	repository *SpigotMC
+	completed  bool
 }
 
 type SpigotVersionInfo struct {
@@ -44,6 +46,10 @@ type SpigotVersion struct {
 	ReleaseDate int64         `json:"releaseDate"`
 	Downloads   int           `json:"downloads"`
 	Rating      spiget.Rating `json:"rating"`
+}
+
+type SpigotFile struct {
+	*SpigotVersion
 }
 
 func init() {
@@ -61,34 +67,81 @@ func NewSpigotRepository(ctx context.Context, context *bucket.OpenContext) *Spig
 }
 
 func (r *SpigotMC) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, []bucket.RemotePlugin, error) {
-	return nil, nil, fmt.Errorf("spigotmc: not implemented")
+	var tot int
+	var res []bucket.RemotePlugin
+
+	for _, name := range bucket.Distinct([]string{
+		plugin.GetName(), bucket.Decamel(plugin.GetName(), " ")}) {
+		cand, n, err := r.Search(name, 5)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		tot += n
+		res = append(res, cand...)
+	}
+
+	if meta, ok := plugin.(bucket.PluginMetadata); ok {
+		for _, a := range meta.GetAuthors() {
+			auts, err := r.GetAuthor(strings.ReplaceAll(a, " ", ""))
+			if err != nil {
+				continue
+			}
+
+			for _, aut := range auts {
+				autres, rsp, err := r.GetAuthorResources(aut)
+				if rsp.StatusCode == 404 {
+					continue
+				} else if err != nil {
+					return nil, nil, err
+				}
+
+				tot += len(autres)
+				for _, ares := range autres {
+					res = append(res, ares)
+				}
+			}
+		}
+	}
+
+	if tot == 0 {
+		return nil, nil, r.parseError(fmt.Errorf("no match found for \"%s\"", plugin.GetName()))
+	}
+
+	return res[0], res, nil
 }
 
 func (r *SpigotMC) Get(identifier string) (bucket.RemotePlugin, error) {
 	i, err := strconv.Atoi(identifier)
 	if err != nil {
-		return nil, err
+		return nil, r.parseError(err)
 	}
 
 	res, _, err := r.Client.Resources.Get(r.Lock, i)
 
-	return &SpigotResource{repository: r, Resource: *res}, err
-}
-
-func (r *SpigotMC) GetByHash(hash string) (bucket.RemoteVersion, error) {
-	return nil, nil
+	return &SpigotResource{repository: r, Resource: *res}, r.parseError(err)
 }
 
 func (r *SpigotMC) SearchAll(query string, max int) ([]bucket.RemotePlugin, int, error) {
-	return nil, 0, nil
+	return r.Search(query, max)
 }
 
 func (r *SpigotMC) Search(query string, max int) ([]bucket.RemotePlugin, int, error) {
-	return nil, 0, nil
-}
+	res, rsp, err := r.Client.Search.SearchResource(r.Lock, query,
+		&spiget.ResourceSearchOptions{})
 
-func (r *SpigotMC) GetVersion(identifier string) (bucket.RemoteVersion, error) {
-	return nil, nil
+	if rsp.StatusCode == 404 {
+		return []bucket.RemotePlugin{}, 0, nil
+	} else if err != nil {
+		return nil, 0, r.parseError(err)
+	}
+
+	plugins := make([]bucket.RemotePlugin, 0, len(res))
+	for _, p := range res {
+		plugins = append(plugins, &SpigotResource{repository: r, Resource: *p})
+	}
+
+	return plugins, len(plugins), nil
 }
 
 func (r *SpigotMC) InitCategoryNames() error {
@@ -107,11 +160,41 @@ func (r *SpigotMC) InitCategoryNames() error {
 	return nil
 }
 
+func (r *SpigotMC) GetAuthor(name string) ([]*spiget.Author, error) {
+	auths, rsp, err := r.Client.Authors.Search(r.Lock, name, &spiget.AuthorSearchOptions{})
+	if rsp.StatusCode == 404 {
+		return []*spiget.Author{}, nil
+	}
+
+	return auths, err
+}
+
+func (r *SpigotMC) GetAuthorResources(author *spiget.Author) ([]*SpigotResource, *spiget.Response, error) {
+	url := fmt.Sprintf("authors/%d/resources", author.ID)
+	req, err := r.Client.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, nil, r.parseError(err)
+	}
+
+	var resources []spiget.Resource
+	rsp, err := r.Client.Do(r.Lock, req, &resources)
+	if err != nil {
+		return nil, rsp, r.parseError(err)
+	}
+
+	spigot := make([]*SpigotResource, 0, len(resources))
+	for _, res := range resources {
+		spigot = append(spigot, &SpigotResource{repository: r, Resource: res})
+	}
+
+	return spigot, rsp, nil
+}
+
 func (r *SpigotMC) CategoryNames() (map[int]string, error) {
 	if r.categoryNames == nil {
 		err := r.InitCategoryNames()
 		if err != nil {
-			return nil, err
+			return nil, r.parseError(err)
 		}
 	}
 
@@ -122,10 +205,24 @@ func (r *SpigotResource) GetName() string {
 	return r.Name
 }
 
+func (r *SpigotResource) requireComplete() error {
+	if !r.completed {
+		res, err := r.repository.Get(r.GetIdentifier())
+		if err != nil {
+			return err
+		}
+
+		*r = *res.(*SpigotResource)
+		r.completed = true
+	}
+
+	return nil
+}
+
 func (r *SpigotResource) GetLatestVersion() (bucket.RemoteVersion, error) {
 	vers, err := r.GetVersions()
 	if err != nil {
-		return nil, err
+		return nil, r.repository.parseError(err)
 	}
 
 	return vers[0], nil
@@ -134,19 +231,24 @@ func (r *SpigotResource) GetLatestVersion() (bucket.RemoteVersion, error) {
 func (r *SpigotResource) GetVersion(identifier string) (bucket.RemoteVersion, error) {
 	i, err := strconv.Atoi(identifier)
 	if err != nil {
-		return nil, err
+		return nil, r.repository.parseError(err)
 	}
 
 	for _, v := range r.Versions {
 		if v.ID == i {
-			return &SpigotVersion{SpigotVersionInfo: SpigotVersionInfo{SpigotResource: r, Version: v}}, nil
+			return (&SpigotVersionInfo{SpigotResource: r, Version: v}).Get()
 		}
 	}
 
-	return nil, fmt.Errorf("version %s not found", identifier)
+	return nil, r.repository.parseError(fmt.Errorf("version %s not found", identifier))
 }
 
 func (r *SpigotResource) GetVersions() ([]bucket.RemoteVersion, error) {
+	err := r.requireComplete()
+	if err != nil {
+		return nil, err
+	}
+
 	vers := make([]bucket.RemoteVersion, 0, len(r.Versions))
 	for _, v := range r.Versions {
 		vers = append(vers, &SpigotVersion{SpigotVersionInfo: SpigotVersionInfo{SpigotResource: r, Version: v}})
@@ -158,7 +260,7 @@ func (r *SpigotResource) GetVersions() ([]bucket.RemoteVersion, error) {
 func (r *SpigotResource) GetVersionIdentifiers() ([]string, error) {
 	vers, err := r.GetVersions()
 	if err != nil {
-		return nil, err
+		return nil, r.repository.parseError(err)
 	}
 
 	var identifiers []string
@@ -172,7 +274,7 @@ func (r *SpigotResource) GetVersionIdentifiers() ([]string, error) {
 func (r *SpigotResource) GetLatestCompatible(platform bucket.PlatformType) (bucket.RemoteVersion, error) {
 	vers, err := r.GetVersions()
 	if err != nil {
-		return nil, err
+		return nil, r.repository.parseError(err)
 	}
 
 	for _, v := range vers {
@@ -181,12 +283,32 @@ func (r *SpigotResource) GetLatestCompatible(platform bucket.PlatformType) (buck
 		}
 	}
 
-	return nil, parseError(fmt.Errorf("no compatible version found"))
+	return nil, r.repository.parseError(fmt.Errorf("no compatible version found"))
+}
+
+func (s *SpigotMC) categoryCompatible(scat spiget.Category, platform bucket.PlatformType) bool {
+	cat, err := spigotmc.GetCategory(scat)
+	if err != nil {
+		return false
+	}
+
+	for _, p := range cat.CompatiblePlatforms {
+		if p == platform.Name {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (r *SpigotResource) Compatible(platform bucket.PlatformType) bool {
-	ver, err := r.GetLatestCompatible(platform)
-	return err == nil && ver != nil
+	res := r.repository.categoryCompatible(r.Category, platform)
+	if !res {
+		v, err := r.GetLatestCompatible(platform)
+		return err == nil && v != nil
+	}
+
+	return res
 }
 
 func (r *SpigotResource) GetIdentifier() string {
@@ -194,11 +316,24 @@ func (r *SpigotResource) GetIdentifier() string {
 }
 
 func (r *SpigotResource) GetAuthors() []string {
+	var contrs []string
 	if r.Contributors != "" {
-		return strings.Split(r.Contributors, ",")
+		contrs = strings.Split(r.Contributors, ",")
+	} else {
+		contrs = []string{}
 	}
 
-	return []string{r.Author.Name}
+	if r.Author.Name != "" {
+		return append(contrs, r.Author.Name)
+	} else {
+		aut, _, err := r.repository.Client.Authors.Get(r.repository.Lock, r.Author.ID)
+		if err != nil {
+			return contrs
+		} else {
+			return append(contrs, aut.Name)
+		}
+	}
+
 }
 
 func (r *SpigotResource) GetDescription() string {
@@ -227,31 +362,20 @@ func (v *SpigotVersionInfo) GetCategory() (*spigotmc.Category, error) {
 }
 
 func (v *SpigotVersionInfo) Compatible(platform bucket.PlatformType) bool {
-	cat, err := v.GetCategory()
-	if err != nil {
-		return false
-	}
-
-	for _, p := range cat.CompatiblePlatforms {
-		if p == platform.Name {
-			return true
-		}
-	}
-
-	return false
+	return v.repository.categoryCompatible(v.Category, platform)
 }
 
 func (v *SpigotVersionInfo) Get() (*SpigotVersion, error) {
 	u := fmt.Sprintf("resources/%d/versions/%d", v.Resource.ID, v.ID)
 	req, err := v.repository.Client.NewRequest("GET", u, nil)
 	if err != nil {
-		return nil, err
+		return nil, v.repository.parseError(err)
 	}
 
 	ver := SpigotVersion{SpigotVersionInfo: *v}
 	_, err = v.repository.Client.Do(v.repository.Lock, req, &ver)
 
-	return &ver, err
+	return &ver, v.repository.parseError(err)
 }
 
 func (v *SpigotVersion) GetName() string {
@@ -267,10 +391,37 @@ func (v *SpigotVersion) Compatible(platform bucket.PlatformType) bool {
 }
 
 func (v *SpigotVersion) GetFiles() ([]bucket.RemoteFile, error) {
-	var remoteFiles []bucket.RemoteFile
-	/* for i := range v.File {
-		remoteFiles = append(remoteFiles, &p.Files[i])
-	} */
+	return []bucket.RemoteFile{&SpigotFile{SpigotVersion: v}}, nil
+}
 
-	return remoteFiles, nil
+func (f *SpigotFile) Name() string {
+	return f.SpigotVersion.Name
+}
+
+func (f *SpigotFile) Optional() bool {
+	return false
+}
+
+func (f *SpigotFile) Download() (io.ReadCloser, error) {
+	if f.External {
+		return nil, f.repository.parseError(fmt.Errorf("external file not supported"))
+	}
+
+	r, err := f.repository.Client.Resources.DownloadVersion(f.repository.Lock, f.Resource.ID, f.ID)
+	if err != nil {
+		return nil, f.repository.parseError(err)
+	}
+
+	return r.Body, nil
+}
+
+func (f *SpigotFile) Verify() error {
+	return nil // SpigotMC does not provide checksums
+}
+
+func (m *SpigotMC) parseError(err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("spigotmc: %s", err)
 }

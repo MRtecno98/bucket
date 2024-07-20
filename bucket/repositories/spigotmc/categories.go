@@ -58,7 +58,8 @@ var Categories = []Category{
 		{ID: Chat14}, {ID: Utilities15}, {ID: Misc16}, {ID: Fun}, {ID: WorldManagement},
 		{ID: Mechanics}, {ID: Economy}, {ID: GameMode}, {ID: Skript}, {ID: Libraries26},
 		{ID: NoRating},
-	}, CompatiblePlatforms: []string{platforms.SpigotTypePlatform.Name}},
+	}, CompatiblePlatforms: []string{platforms.SpigotTypePlatform.Name,
+		platforms.PaperTypePlatform.Name, platforms.PurpurTypePlatform.Name}},
 
 	{ID: Standalone, Subcategories: []Category{}},
 	{ID: Universal, Subcategories: []Category{}},
