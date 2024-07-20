@@ -27,6 +27,8 @@ func ComparisonIndex(a, b Plugin) float64 {
 				listA, listB = listB, listA
 			}
 
+			// The authors are compared in pairs, the most similar one is selected
+
 			maxes := make([]int, 0)
 			for _, authA := range listA { // Cycle every author in A
 				maxindex := 0
@@ -37,7 +39,7 @@ func ComparisonIndex(a, b Plugin) float64 {
 					}
 
 					// The most similar one is selected
-					tmax := math.Max(max, StringSimilarity(authA, authB))
+					tmax := math.Max(max, LevenshteinIndex(authA, authB))
 					if tmax != max {
 						maxindex = i
 						max = tmax
@@ -49,8 +51,8 @@ func ComparisonIndex(a, b Plugin) float64 {
 				}
 
 				// This author in A is paired with the one in B and
-				// its similarity index is added to the final product
-				index *= max
+				// its similarity index is averaged to the final product
+				index = (2*max + index) / 3
 
 				// After pairing these authors, remove them for subsequent pairings
 				maxes = append(maxes, maxindex)
@@ -61,9 +63,32 @@ func ComparisonIndex(a, b Plugin) float64 {
 	return index
 }
 
+func LevenshteinIndex(a, b string) float64 {
+	return 1 - float64(lvh.Compare(a, b).EditDist)/float64(max(len(a), len(b)))
+}
+
 // Inverse of the Levenshtein distance normalized between 0 and 1
 func StringSimilarity(a, b string) float64 {
-	return 1 - float64(lvh.Compare(a, b).EditDist)/float64(max(len(a), len(b)))
+	if math.Abs(float64(len(a))-float64(len(b)))/math.Abs(float64(len(a))) > 0.7 {
+		return ShiftSimilarity(a, b)
+	}
+
+	return LevenshteinIndex(a, b)
+}
+
+func ShiftSimilarity(a, b string) float64 {
+	if len(a) < len(b) {
+		a, b = b, a
+	}
+
+	var index float64 = 0
+	for i := 0; i < len(a)-len(b)+1; i++ {
+		index = max(index, LevenshteinIndex(a[i:i+len(b)], b))
+	}
+
+	index = (2*index + LevenshteinIndex(a, b)) / 3
+
+	return index
 }
 
 // Some people write multiple authors in a single string
