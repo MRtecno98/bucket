@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
+	"slices"
 
 	"github.com/MRtecno98/afero"
 	"github.com/MRtecno98/afero/resolver"
@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-const SIMILARITY_THRESHOLD float64 = 0.5
+const SIMILARITY_THRESHOLD float64 = 0.51
 
 type Context struct {
 	Name string `yaml:"name"`
@@ -151,7 +151,7 @@ func (c *OpenContext) ResolvePlugin(plugin Plugin) (RemotePlugin, error) {
 				continue
 			}
 
-			sort.Float64s(keys)
+			slices.Sort(keys)
 			match := keys[len(keys)-1]
 
 			if match < SIMILARITY_THRESHOLD {
