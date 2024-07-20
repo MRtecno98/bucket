@@ -2,6 +2,8 @@ package bucket
 
 import (
 	"archive/zip"
+	"cmp"
+	"slices"
 
 	"github.com/MRtecno98/afero"
 	"github.com/MRtecno98/afero/zipfs"
@@ -32,4 +34,9 @@ func Decamel(camel string, sep string) string {
 		result += string(r)
 	}
 	return result
+}
+
+func Distinct[T cmp.Ordered](slice []T) []T {
+	slices.Sort(slice)
+	return slices.Compact(slice)
 }

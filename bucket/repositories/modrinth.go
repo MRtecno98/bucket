@@ -203,7 +203,8 @@ func (r *Modrinth) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, []bucket.
 
 	var tot int
 	var res []bucket.RemotePlugin
-	for _, name := range []string{plugin.GetName(), bucket.Decamel(plugin.GetName(), " ")} {
+	for _, name := range bucket.Distinct([]string{
+		plugin.GetName(), bucket.Decamel(plugin.GetName(), " ")}) {
 		cand, n, err := r.Search(name, 5)
 		if err != nil {
 			return nil, nil, err
@@ -214,7 +215,7 @@ func (r *Modrinth) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, []bucket.
 	}
 
 	if tot == 0 {
-		return nil, nil, parseError(fmt.Errorf("no match found for \"%s\"", plugin.GetName()))
+		return nil, nil, r.parseError(fmt.Errorf("no match found for \"%s\"", plugin.GetName()))
 	}
 
 	return res[0], res, nil
@@ -229,7 +230,7 @@ func (r *Modrinth) Get(identifier string) (bucket.RemotePlugin, error) {
 	}
 
 	if res.StatusCode() != 200 {
-		return nil, parseReqError(res)
+		return nil, r.parseReqError(res)
 	}
 
 	proj := res.Result().(*ModrinthProject)
@@ -247,7 +248,7 @@ func (r *Modrinth) GetByHash(sha1 string) (bucket.RemoteVersion, error) {
 	}
 
 	if res.StatusCode() != 200 {
-		return nil, parseReqError(res)
+		return nil, r.parseReqError(res)
 	}
 
 	ver := res.Result().(*ModrinthVersion)
@@ -275,11 +276,11 @@ func (r *Modrinth) search(options map[string]string, max int) ([]bucket.RemotePl
 		Get("/search")
 
 	if err != nil {
-		return nil, -1, parseError(err)
+		return nil, -1, r.parseError(err)
 	}
 
 	if res.StatusCode() != 200 {
-		return nil, -1, parseReqError(res)
+		return nil, -1, r.parseReqError(res)
 	}
 
 	summary := res.Result().(*ModrinthSummary)
@@ -336,11 +337,11 @@ func (r *Modrinth) GetVersion(identifier string) (bucket.RemoteVersion, error) {
 
 	res, err := r.makreq().SetResult(&version).Get("/project/version/" + identifier)
 	if err != nil {
-		return nil, parseError(err)
+		return nil, r.parseError(err)
 	}
 
 	if res.StatusCode() != 200 {
-		return nil, parseReqError(res)
+		return nil, r.parseReqError(res)
 	}
 
 	return res.Result().(*ModrinthVersion), nil
@@ -368,11 +369,11 @@ func (p ModrinthProject) GetVersions() ([]bucket.RemoteVersion, error) {
 
 	res, err := p.repository.HttpClient.R().SetResult(&versions).Get("/project/" + p.Slug + "/version")
 	if err != nil {
-		return nil, parseError(err)
+		return nil, p.repository.parseError(err)
 	}
 
 	if res.StatusCode() != 200 {
-		return nil, parseReqError(res)
+		return nil, p.repository.parseReqError(res)
 	}
 
 	var remoteVersions []bucket.RemoteVersion
@@ -400,7 +401,7 @@ func (p ModrinthProject) GetLatestCompatible(platform bucket.PlatformType) (buck
 		}
 	}
 
-	return nil, parseError(fmt.Errorf("no compatible version found"))
+	return nil, p.repository.parseError(fmt.Errorf("no compatible version found"))
 }
 
 func (p ModrinthProject) Compatible(platform bucket.PlatformType) bool {
@@ -470,11 +471,11 @@ func (f *ModrinthFile) Download() (io.ReadCloser, error) {
 
 	resp, err := req.Get(f.URL)
 	if err != nil {
-		return nil, parseError(err)
+		return nil, f.repository.parseError(err)
 	}
 
 	if resp.StatusCode() != 200 {
-		return nil, parseReqError(resp)
+		return nil, f.repository.parseReqError(resp)
 	}
 
 	raw := resp.RawBody()
@@ -492,24 +493,24 @@ func (f *ModrinthFile) Download() (io.ReadCloser, error) {
 
 func (f *ModrinthFile) Verify() error {
 	if f.hasher == nil {
-		return parseError(errors.New("file not downloaded"))
+		return f.repository.parseError(errors.New("file not downloaded"))
 	}
 
 	hash := hex.EncodeToString(f.hasher.Sum(nil))
 	if hash != f.Hashes.Sha512 {
-		return parseError(errors.New("hash mismatch"))
+		return f.repository.parseError(errors.New("hash mismatch"))
 	}
 
 	return nil
 }
 
-func parseReqError(res *resty.Response) error {
+func (m *Modrinth) parseReqError(res *resty.Response) error {
 	var err map[string]string
 	json.Unmarshal(res.Body(), &err)
 
 	return fmt.Errorf("modrinth: error %s: %s", res.Status(), err["error"])
 }
 
-func parseError(err error) error {
+func (m *Modrinth) parseError(err error) error {
 	return fmt.Errorf("modrinth: %s", err)
 }
