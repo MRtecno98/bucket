@@ -189,7 +189,7 @@ func main() {
 								continue
 							}
 
-							log.Printf("Found repo match ----------------------- Similarity index: %f\n", bucket.ComparisonIndex(org, mpl))
+							log.Printf("Found repo match ----------------------- Confidence index: %f\n", bucket.ComparisonIndex(org, mpl))
 
 							latest, err := mpl.GetLatestCompatible(oc.Platform.Type())
 							if err != nil {
