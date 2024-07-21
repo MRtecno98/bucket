@@ -141,6 +141,10 @@ func (c *OpenContext) ResolvePlugin(plugin Plugin) (RemotePlugin, error) {
 					score := ComparisonIndex(plugin, pl)
 					keys = append(keys, score)
 					scores[score] = pl
+
+					if score >= 1.0 {
+						return pl, nil
+					}
 				}
 			}
 
