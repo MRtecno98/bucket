@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 
@@ -49,28 +50,41 @@ func RegisterPlatform(platform PlatformType, priority int) {
 }
 
 func DetectFromJars(context *OpenContext, filter func(jar *afero.Afero) bool) (bool, error) {
-	files, err := context.Fs.ReadDir("")
-	if err != nil {
-		return false, err
-	}
+	return DetectFromJarsDirs([]string{""}, context, filter)
+}
 
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".jar" {
-			opened, err := context.Fs.Open(file.Name())
-			if err != nil {
-				return false, err
-			}
+func DetectFromJarsDirs(dirs []string, context *OpenContext, filter func(jar *afero.Afero) bool) (bool, error) {
+	for _, dir := range dirs {
+		ok, err := context.Fs.DirExists(dir)
+		if err != nil {
+			return false, err
+		} else if !ok {
+			continue
+		}
 
-			defer opened.Close()
+		files, err := context.Fs.ReadDir(dir)
+		if err != nil {
+			return false, err
+		}
 
-			reader, err := zip.NewReader(opened, file.Size())
-			if err != nil {
-				return false, err
-			}
+		for _, file := range files {
+			if filepath.Ext(file.Name()) == ".jar" {
+				opened, err := context.Fs.Open(path.Join(dir, file.Name()))
+				if err != nil {
+					return false, err
+				}
 
-			jar := &afero.Afero{Fs: zipfs.New(reader)}
-			if filter(jar) {
-				return true, nil
+				defer opened.Close()
+
+				reader, err := zip.NewReader(opened, file.Size())
+				if err != nil {
+					return false, err
+				}
+
+				jar := &afero.Afero{Fs: zipfs.New(reader)}
+				if filter(jar) {
+					return true, nil
+				}
 			}
 		}
 	}
@@ -79,7 +93,11 @@ func DetectFromJars(context *OpenContext, filter func(jar *afero.Afero) bool) (b
 }
 
 func DetectJarPath(context *OpenContext, filter func(path string) bool) (bool, error) {
-	return DetectFromJars(context, func(fs *afero.Afero) bool {
+	return DetectJarPathDirs([]string{""}, context, filter)
+}
+
+func DetectJarPathDirs(dirs []string, context *OpenContext, filter func(path string) bool) (bool, error) {
+	return DetectFromJarsDirs(dirs, context, func(fs *afero.Afero) bool {
 		err := fs.Walk("", func(path string, info os.FileInfo, err error) error {
 			if filter(path) {
 				return io.EOF

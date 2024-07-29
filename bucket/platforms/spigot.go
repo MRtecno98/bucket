@@ -92,12 +92,12 @@ func NewSpigotPlatform(context *bucket.OpenContext) *SpigotPlatform {
 }
 
 func DetectSpigot(context *bucket.OpenContext) (bucket.Platform, error) {
-	res, err := bucket.DetectJarPath(context, func(path string) bool {
+	res, err := bucket.DetectJarPathDirs([]string{"", "bundler/versions"}, context, func(path string) bool {
 		return strings.Contains(path, "org\\spigotmc")
 	})
 
 	if err != nil {
-		log.Println("error during platform check:", err)
+		log.Printf("error during platform check: %v\n", err)
 	}
 
 	if res {
