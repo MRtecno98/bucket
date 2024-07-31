@@ -68,6 +68,17 @@ func BufferedDecode(decode func(in []byte, out any) error) Decoder {
 	}
 }
 
+func CompatiblePlatforms(p PlatformCompatible) []PlatformType {
+	var out []PlatformType
+	for _, v := range platforms {
+		if p.Compatible(v.Platform) {
+			out = append(out, v.Platform)
+		}
+	}
+
+	return out
+}
+
 func (p *PluginCachePlatform) Plugins() ([]Plugin, []error, error) {
 	if p.PluginsCache != nil {
 		return p.PluginsCache, nil, nil

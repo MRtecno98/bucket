@@ -64,6 +64,11 @@ type HttpRepository struct {
 	HttpClient *resty.Client
 }
 
+type NamedRepository struct {
+	Repository
+	RepositoryConfig
+}
+
 func NewHttpRepository(endpoint string) *HttpRepository {
 	return &HttpRepository{
 		Endpoint:   endpoint,

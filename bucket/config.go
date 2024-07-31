@@ -1,6 +1,8 @@
 package bucket
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -24,8 +26,26 @@ type Config struct {
 }
 
 type RepositoryConfig struct {
-	Name    string            `yaml:"name"`
-	Options map[string]string `yaml:"options"`
+	Name     string            `yaml:"name"`
+	Provider string            `yaml:"provider"`
+	Options  map[string]string `yaml:"options"`
+}
+
+func (rc *RepositoryConfig) GetName() string {
+	if rc.Name == "" {
+		return rc.Provider
+	} else {
+		return rc.Name
+	}
+}
+
+func (rc *RepositoryConfig) MakeRepository(oc *OpenContext) (*NamedRepository, error) {
+	if constr, ok := Repositories[rc.Provider]; ok {
+		return &NamedRepository{RepositoryConfig: *rc,
+			Repository: constr(context.TODO(), oc, rc.Options)}, nil
+	} else {
+		return nil, fmt.Errorf("unknown repository: %s", rc.Name)
+	}
 }
 
 func (c *Config) MakeWorkspace() (*Workspace, error) {

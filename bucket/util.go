@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"cmp"
 	"slices"
+	"sync"
 
 	"github.com/MRtecno98/afero"
 	"github.com/MRtecno98/afero/zipfs"
@@ -39,4 +40,30 @@ func Decamel(camel string, sep string) string {
 func Distinct[T cmp.Ordered](slice []T) []T {
 	slices.Sort(slice)
 	return slices.Compact(slice)
+}
+
+func Parallelize(tasks ...func() error) error {
+	var wait sync.WaitGroup
+	wait.Add(len(tasks))
+
+	errs := make(chan error, len(tasks))
+
+	for _, task := range tasks {
+		go func(task func() error) {
+			defer wait.Done()
+			if err := task(); err != nil {
+				errs <- err
+			}
+		}(task)
+	}
+
+	wait.Wait()
+
+	select {
+	case err := <-errs:
+		return err
+	default:
+	}
+
+	return nil
 }
