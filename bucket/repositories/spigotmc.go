@@ -66,6 +66,10 @@ func NewSpigotRepository(ctx context.Context, context *bucket.OpenContext) *Spig
 	}
 }
 
+func (r *SpigotMC) Provider() string {
+	return SPIGOTMC_REPOSITORY
+}
+
 func (r *SpigotMC) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, []bucket.RemotePlugin, error) {
 	var tot int
 	var res []bucket.RemotePlugin

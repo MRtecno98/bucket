@@ -8,6 +8,8 @@ import (
 )
 
 type Repository interface {
+	Provider() string
+
 	Search(query string, max int) ([]RemotePlugin, int, error)
 	SearchAll(query string, max int) ([]RemotePlugin, int, error)
 

@@ -183,6 +183,10 @@ func NewModrinthRepository(lock context.Context, context *bucket.OpenContext) *M
 	}
 }
 
+func (r *Modrinth) Provider() string {
+	return MODRINTH_REPOSITORY
+}
+
 func (r *Modrinth) makreq() *resty.Request {
 	return r.HttpClient.R().SetContext(r.Lock)
 }
