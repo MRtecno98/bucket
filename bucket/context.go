@@ -92,9 +92,13 @@ func (c Context) OpenContext() (*OpenContext, error) {
 		return nil, err
 	}
 
-	var conf *Config = nil
+	var conf *Config = &Config{}
 	conf, err = LoadFilesystemConfig(fs, ConfigName)
-	if err == nil && conf != nil {
+	if err == nil {
+		if conf == nil {
+			conf = &Config{}
+		}
+
 		conf.Collapse(GlobalConfig) // Also add base options
 	}
 
@@ -103,7 +107,7 @@ func (c Context) OpenContext() (*OpenContext, error) {
 		Repositories: make(map[string]NamedRepository),
 		Plugins:      NewPluginBiMap()}
 
-	return ctx, Parallelize(
+	return ctx, Parallelize(ctx.LocalConfig.Multithread,
 		ctx.LoadRepositories,
 		ctx.LoadPlatform,
 		ctx.InitialiazeDatabase)
@@ -254,11 +258,19 @@ func CreateWorkspace(contexts ...Context) (*Workspace, error) {
 	opened := make([]*OpenContext, len(contexts))
 
 	for i, v := range contexts {
-		op, err := v.OpenContext()
+		err := Parallelize(GlobalConfig.Multithread,
+			func() error {
+				op, err := v.OpenContext()
+				if err != nil {
+					return err
+				} else {
+					opened[i] = op
+					return nil
+				}
+			})
+
 		if err != nil {
 			return nil, err
-		} else {
-			opened[i] = op
 		}
 	}
 

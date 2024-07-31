@@ -42,19 +42,25 @@ func Distinct[T cmp.Ordered](slice []T) []T {
 	return slices.Compact(slice)
 }
 
-func Parallelize(tasks ...func() error) error {
+func Parallelize(multi bool, tasks ...func() error) error {
 	var wait sync.WaitGroup
 	wait.Add(len(tasks))
 
 	errs := make(chan error, len(tasks))
 
 	for _, task := range tasks {
-		go func(task func() error) {
+		f := func(task func() error) {
 			defer wait.Done()
 			if err := task(); err != nil {
 				errs <- err
 			}
-		}(task)
+		}
+
+		if multi {
+			go f(task)
+		} else {
+			f(task)
+		}
 	}
 
 	wait.Wait()

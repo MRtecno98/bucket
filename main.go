@@ -176,7 +176,7 @@ func main() {
 						var wait sync.WaitGroup
 						wait.Add(len(pls))
 						for _, pli := range pls {
-							func(pl bucket.Plugin) {
+							go func(pl bucket.Plugin) {
 								defer wait.Done()
 								res, err := oc.ResolvePlugin(pl)
 								if err != nil {
