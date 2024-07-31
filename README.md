@@ -10,14 +10,15 @@ Development is currently ongoing
 - [X] Workspace system
 	- [X] Remote workspaces
 - [X] Platform and plugin detection
-- [ ] Retrieve plugins
+- [X] Retrieve plugins
 	- [X] SpigotMC web scraping for plugins
 	- [X] Modrinth API integration
 	- [ ] Custom repository protocol
 - [ ] Download and install plugins
-- [ ] Resolve local plugins **[WIP]**
+- [X] Resolve local plugins
 	- [X] Differential confidence check
-	- [ ] Resolution caching
+	- [X] Local database
+	- [X] Resolution caching
 - [ ] Auto update plugins
 - [ ] Update/switch server jar
 - [ ] Backup worlds and configs
