@@ -77,7 +77,15 @@ type ModrinthProject struct {
 	Updated       string       `json:"updated"`
 	Followers     int          `json:"followers"`
 	Versions      []string     `json:"versions"`
-	Gallery       []string     `json:"gallery"`
+	Gallery       []struct {
+		Url         string `json:"url"`
+		RawUrl      string `json:"raw_url"`
+		Featured    bool   `json:"featured"`
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Created     string `json:"created"`
+		Ordering    int    `json:"ordering"`
+	} `json:"gallery"`
 
 	License struct {
 		ID   string `json:"id"`
@@ -149,6 +157,7 @@ type ModrinthProjectSummary struct {
 	Updated           string               `json:"date_modified"`
 	LatestGameVersion string               `json:"latest_version"`
 	License           string               `json:"license"`
+	Gallery           []string             `json:"gallery"`
 	FeaturedGallery   string               `json:"featured_gallery"`
 	Dependencies      []string             `json:"dependencies"`
 }
