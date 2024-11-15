@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/pprof"
 	"slices"
 	"strconv"
 	"strings"
@@ -26,6 +27,7 @@ var w *bucket.Workspace
 var globalError error
 
 var stamp time.Time
+var profile bool
 
 func InitializeContexts(loadDatabase bool) func(*cli.Context) error {
 	return func(c *cli.Context) error {
@@ -104,7 +106,7 @@ func main() {
 	log.SetPrefix("bucket: ")
 	log.SetFlags(0)
 
-	stamp = time.Now()
+	defer pprof.StopCPUProfile()
 
 	(&cli.App{
 		Name:  "bucket",
@@ -146,6 +148,31 @@ func main() {
 				Value:       bucket.DEBUG,
 				Destination: &bucket.DEBUG,
 			},
+
+			&cli.BoolFlag{
+				Name:        "cpuprofile",
+				Usage:       "write a cpu profile",
+				Destination: &profile,
+			},
+		},
+
+		Before: func(c *cli.Context) error {
+			if profile {
+				log.Println("starting CPU profile")
+
+				f, err := os.Create(bucket.NewProfileFilename())
+				if err != nil {
+					return err
+				}
+
+				err = pprof.StartCPUProfile(f)
+				if err != nil {
+					return err
+				}
+			}
+
+			stamp = time.Now()
+			return nil
 		},
 
 		ExitErrHandler: func(c *cli.Context, err error) {
