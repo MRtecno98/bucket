@@ -56,6 +56,8 @@ const (
 type ModrinthProject struct {
 	repository *Modrinth `json:"-"`
 
+	authors []ModrinthMember
+
 	ID            string       `json:"id"`
 	Slug          string       `json:"slug"`
 	Title         string       `json:"title"`
@@ -141,6 +143,26 @@ type ModrinthFile struct {
 	Size     int    `json:"size"`
 }
 
+type ModrinthMember struct {
+	ModrinthUser `json:"user"`
+
+	TeamID      string `json:"team_id"`
+	Role        string `json:"role"`
+	Permissions int    `json:"permissions"`
+	Accepted    bool   `json:"accepted"`
+	Ordering    int    `json:"ordering"`
+}
+
+type ModrinthUser struct {
+	ID        string `json:"id"`
+	Username  string `json:"username"`
+	AvatarURL string `json:"avatar_url"`
+	Bio       string `json:"bio"`
+	Created   string `json:"date_created"`
+	Role      string `json:"role"`
+	Badges    int    `json:"badges"`
+}
+
 type ModrinthProjectSummary struct {
 	ModrinthProject
 
@@ -210,7 +232,7 @@ func (r *Modrinth) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, []bucket.
 		ver, err := r.GetByHash(hex.EncodeToString(h.Sum(nil)))
 		if err == nil {
 			res := ver.(*ModrinthVersion).ModrinthProject
-			return res, []bucket.RemotePlugin{res}, nil
+			return &res, []bucket.RemotePlugin{&res}, nil
 		} // else try to resolve by name
 	}
 
@@ -249,7 +271,7 @@ func (r *Modrinth) Get(identifier string) (bucket.RemotePlugin, error) {
 	proj := res.Result().(*ModrinthProject)
 	proj.repository = r
 
-	return proj, nil
+	return proj, proj.requestMembers()
 }
 
 func (r *Modrinth) GetByHash(sha1 string) (bucket.RemoteVersion, error) {
@@ -342,6 +364,10 @@ func (s *ModrinthProjectSummary) UnmarshalJSON(data []byte) error {
 }
 
 func (s *ModrinthProjectSummary) GetAuthors() []string {
+	if s.authors != nil && len(s.authors) != 0 {
+		return s.ModrinthProject.GetAuthors()
+	}
+
 	return []string{s.Author}
 }
 
@@ -360,7 +386,7 @@ func (r *Modrinth) GetVersion(identifier string) (bucket.RemoteVersion, error) {
 	return res.Result().(*ModrinthVersion), nil
 }
 
-func (p ModrinthProject) GetName() string {
+func (p *ModrinthProject) GetName() string {
 	return p.Title
 }
 
@@ -373,11 +399,11 @@ func (p ModrinthProject) GetLatestVersion() (bucket.RemoteVersion, error) {
 	return vers[0], nil
 }
 
-func (p ModrinthProject) GetVersion(identifier string) (bucket.RemoteVersion, error) {
+func (p *ModrinthProject) GetVersion(identifier string) (bucket.RemoteVersion, error) {
 	return p.repository.GetVersion(identifier)
 }
 
-func (p ModrinthProject) GetVersions() ([]bucket.RemoteVersion, error) {
+func (p *ModrinthProject) GetVersions() ([]bucket.RemoteVersion, error) {
 	var versions []ModrinthVersion
 
 	res, err := p.repository.HttpClient.R().SetResult(&versions).Get("/project/" + p.Slug + "/version")
@@ -391,18 +417,18 @@ func (p ModrinthProject) GetVersions() ([]bucket.RemoteVersion, error) {
 
 	var remoteVersions []bucket.RemoteVersion
 	for i := range versions {
-		versions[i].ModrinthProject = p
-		remoteVersions = append(remoteVersions, versions[i])
+		versions[i].ModrinthProject = *p
+		remoteVersions = append(remoteVersions, &versions[i])
 	}
 
 	return remoteVersions, nil
 }
 
-func (p ModrinthProject) GetVersionIdentifiers() ([]string, error) {
+func (p *ModrinthProject) GetVersionIdentifiers() ([]string, error) {
 	return p.Versions, nil
 }
 
-func (p ModrinthProject) GetLatestCompatible(platform bucket.PlatformType) (bucket.RemoteVersion, error) {
+func (p *ModrinthProject) GetLatestCompatible(platform bucket.PlatformType) (bucket.RemoteVersion, error) {
 	versions, err := p.GetVersions()
 	if err != nil {
 		return nil, err
@@ -422,35 +448,65 @@ func (p ModrinthProject) Compatible(platform bucket.PlatformType) bool {
 	return err == nil && ver != nil
 }
 
-func (p ModrinthProject) GetIdentifier() string {
-	return p.Slug
-}
-
-func (p ModrinthProject) GetAuthors() []string {
-	return []string{p.Team}
-}
-
-func (p ModrinthProject) GetDescription() string {
-	return p.Body
-}
-
-func (p ModrinthProject) GetWebsite() string {
-	return p.WikiUrl
-}
-
-func (p ModrinthVersion) GetIdentifier() string {
-	return p.ID
-}
-
-func (p ModrinthVersion) GetName() string {
-	return p.Name
-}
-
-func (p ModrinthVersion) GetDependencies() []bucket.Dependency {
+func (p *ModrinthProject) GetDependencies() []bucket.Dependency {
 	panic("not implemented") // TODO: Implement
 }
 
-func (p ModrinthVersion) Compatible(platform bucket.PlatformType) bool {
+func (p *ModrinthProject) requestMembers() error {
+	res, err := p.repository.makreq().
+		SetResult(&p.authors).
+		Get("/project/" + p.ID + "/members")
+	if err != nil {
+		return p.repository.parseError(err)
+	}
+
+	if res.StatusCode() != 200 {
+		return p.repository.parseReqError(res)
+	}
+
+	return nil
+}
+
+func (p *ModrinthProject) GetAuthors() []string {
+	if len(p.authors) == 0 {
+		if err := p.requestMembers(); err != nil {
+			return []string{}
+		}
+	}
+
+	var authors []string
+	for _, v := range p.authors {
+		authors = append(authors, v.Username)
+	}
+
+	return authors
+}
+
+func (p *ModrinthProject) GetIdentifier() string {
+	return p.Slug
+}
+
+func (p *ModrinthProject) GetDescription() string {
+	return p.Body
+}
+
+func (p *ModrinthProject) GetWebsite() string {
+	return p.WikiUrl
+}
+
+func (p *ModrinthVersion) GetIdentifier() string {
+	return p.ID
+}
+
+func (p *ModrinthVersion) GetName() string {
+	return p.Name
+}
+
+func (p *ModrinthVersion) GetDependencies() []bucket.Dependency {
+	panic("not implemented") // TODO: Implement
+}
+
+func (p *ModrinthVersion) Compatible(platform bucket.PlatformType) bool {
 	comp := platform.EveryCompatible()
 	for _, v := range p.Loaders {
 		if slices.Contains(comp, v) {
@@ -461,7 +517,7 @@ func (p ModrinthVersion) Compatible(platform bucket.PlatformType) bool {
 	return false
 }
 
-func (p ModrinthVersion) GetFiles() ([]bucket.RemoteFile, error) {
+func (p *ModrinthVersion) GetFiles() ([]bucket.RemoteFile, error) {
 	var remoteFiles []bucket.RemoteFile
 	for i := range p.Files {
 		remoteFiles = append(remoteFiles, &p.Files[i])
