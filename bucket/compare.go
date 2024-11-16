@@ -63,11 +63,16 @@ func ComparisonIndex(a, b Plugin) float64 {
 	return index
 }
 
+// Inverse of the Levenshtein distance normalized between 0 and 1
 func LevenshteinIndex(a, b string) float64 {
-	return 1 - float64(lvh.Compare(a, b).EditDist)/float64(max(len(a), len(b)))
+	tot := float64(lvh.Compare(a, b).EditDist)
+	uncased := float64(lvh.Compare(strings.ToLower(a), strings.ToLower(b)).EditDist)
+
+	cased := tot - uncased
+
+	return 1 - float64(uncased+0.8*cased)/float64(max(len(a), len(b)))
 }
 
-// Inverse of the Levenshtein distance normalized between 0 and 1
 func StringSimilarity(a, b string) float64 {
 	if math.Abs(float64(len(a))-float64(len(b)))/math.Abs(float64(len(a))) > 0.7 {
 		return ShiftSimilarity(a, b)
