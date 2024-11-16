@@ -209,6 +209,10 @@ func (r *SpigotResource) GetName() string {
 	return r.Name
 }
 
+func (r *SpigotResource) GetRepository() bucket.Repository {
+	return r.repository
+}
+
 func (r *SpigotResource) requireComplete() error {
 	if !r.completed {
 		res, err := r.repository.Get(r.GetIdentifier())

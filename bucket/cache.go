@@ -87,3 +87,11 @@ func (cp *CachedPlugin) GetLatestCompatible(plt PlatformType) (RemoteVersion, er
 
 	return cp.RemotePlugin.GetLatestCompatible(plt)
 }
+
+func (cp *CachedPlugin) GetRepository() Repository {
+	if cp.RemotePlugin != nil {
+		return cp.RemotePlugin.GetRepository()
+	}
+
+	return cp.Repository.Repository
+}

@@ -390,7 +390,11 @@ func (p *ModrinthProject) GetName() string {
 	return p.Title
 }
 
-func (p ModrinthProject) GetLatestVersion() (bucket.RemoteVersion, error) {
+func (p *ModrinthProject) GetRepository() bucket.Repository {
+	return p.repository
+}
+
+func (p *ModrinthProject) GetLatestVersion() (bucket.RemoteVersion, error) {
 	vers, err := p.GetVersions()
 	if err != nil {
 		return nil, err

@@ -224,7 +224,7 @@ func main() {
 									ind = bucket.ComparisonIndex(pl, res)
 								}
 
-								log.Printf("found plugin: %s\t%s %s%s\t%f\n", pl.GetName(), res.GetName(),
+								log.Printf("found plugin: %s [%s] %s %s%s %f\n", pl.GetName(), res.GetRepository().Provider(), res.GetName(),
 									ver.GetName(), res.GetAuthors(), ind)
 							}(pli)
 						}
