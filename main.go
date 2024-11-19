@@ -203,7 +203,7 @@ func main() {
 						var wait sync.WaitGroup
 						wait.Add(len(pls))
 						for _, pli := range pls {
-							func(pl bucket.Plugin) {
+							f := func(pl bucket.Plugin) {
 								defer wait.Done()
 								res, err := oc.ResolvePlugin(pl)
 								if err != nil {
@@ -226,7 +226,13 @@ func main() {
 
 								log.Printf("found plugin: %s [%s] %s %s%s %f\n", pl.GetName(), res.GetRepository().Provider(), res.GetName(),
 									ver.GetName(), res.GetAuthors(), ind)
-							}(pli)
+							}
+
+							if bucket.GlobalConfig.Multithread {
+								go f(pli)
+							} else {
+								f(pli)
+							}
 						}
 
 						wait.Wait()
