@@ -6,7 +6,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/MRtecno98/afero"
 	"github.com/MRtecno98/afero/sqlitevfs"
 )
 
@@ -16,6 +15,7 @@ type CachedPlugin struct {
 	RemotePlugin
 
 	Repository NamedRepository
+	File       string
 
 	name             string
 	LocalIdentifier  string
@@ -28,12 +28,13 @@ type CachedPlugin struct {
 	Confidence float64
 }
 
-func CachedMatch(local Plugin, remote RemotePlugin, repo NamedRepository, conf float64) CachedPlugin {
+func CachedMatch(local LocalPlugin, remote RemotePlugin, repo NamedRepository, conf float64) CachedPlugin {
 	return CachedPlugin{
 		RemotePlugin:     remote,
 		LocalIdentifier:  local.GetIdentifier(),
 		RemoteIdentifier: remote.GetIdentifier(),
 		Repository:       repo,
+		File:             local.File.Name(),
 		Confidence:       conf}
 }
 
@@ -63,11 +64,12 @@ func (c *OpenContext) InitialiazeDatabase() error {
 		log.Printf("initializing database for %s\n", c.Name)
 	}
 
-	if _, ok := c.Fs.Fs.(*afero.MemMapFs); ok {
-		// TODO: Fix database for in-memory filesystem
-		log.Printf("%s: in-memory filesystem not supported for database\n", c.Name)
-		return nil
-	}
+	/*
+		if _, ok := c.Fs.Fs.(*afero.MemMapFs); ok {
+			// TODO: Fix database for in-memory filesystem
+			log.Printf("%s: in-memory filesystem not supported for database\n", c.Name)
+			return nil
+		} */
 
 	sqlitevfs.RegisterVFS(c.Name, c.Fs)
 
@@ -100,8 +102,8 @@ func (c *OpenContext) LoadPluginDatabase() error {
 		var repo string
 
 		if err := rows.Scan(&plugin.LocalIdentifier,
-			&plugin.RemoteIdentifier, &plugin.name,
-			&repo, &plugin.Confidence, &authors,
+			&plugin.RemoteIdentifier, &plugin.File,
+			&plugin.name, &repo, &plugin.Confidence, &authors,
 			&plugin.description, &plugin.website); err != nil {
 			return err
 		}
@@ -127,8 +129,10 @@ func (c *OpenContext) SavePlugin(plugin CachedPlugin) error {
 		return err
 	}
 
-	if c._savePlugin(plugin) != nil {
-		return tx.Rollback()
+	defer tx.Rollback()
+
+	if err := c._savePlugin(plugin); err != nil {
+		return err
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -143,10 +147,11 @@ func (c *OpenContext) _savePlugin(plugin CachedPlugin) error {
 	if _, err := c.Database.Exec(
 		`INSERT INTO plugins 
 		(identifier, remote_identifier, 
+		 filename, 
 		 name, repository, confidence,
 		 authors, description, website) 
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		plugin.LocalIdentifier, plugin.RemoteIdentifier,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		plugin.LocalIdentifier, plugin.RemoteIdentifier, plugin.File,
 		plugin.GetName(), plugin.Repository.GetName(), plugin.Confidence,
 		strings.Join(plugin.GetAuthors(), ","),
 		plugin.GetDescription(), plugin.GetWebsite()); err != nil {
@@ -172,10 +177,18 @@ func (c *OpenContext) SavePluginDatabase() error {
 }
 
 func (c *OpenContext) CreateTables() error {
-	if _, err := c.Database.Exec(`
+	tx, err := c.Database.Begin()
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`
 	CREATE TABLE IF NOT EXISTS plugins (
 		identifier VARCHAR(255) PRIMARY KEY,
 		remote_identifier VARCHAR(255),
+		filename TEXT,
 		name VARCHAR(255),
 		repository VARCHAR(255),
 		confidence REAL,
@@ -186,9 +199,21 @@ func (c *OpenContext) CreateTables() error {
 		return err
 	}
 
-	if _, err := c.Database.Exec(`
+	if _, err := tx.Exec(`
 	CREATE INDEX IF NOT EXISTS plugins_remote_id ON plugins (remote_identifier);
 	`); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`
+	CREATE INDEX IF NOT EXISTS plugins_name ON plugins (filename);
+	`); err != nil {
+		return err
+	}
+
+	// We need a transaction to force the database to write the changes
+	// if we're using an in-memory or remote filesystem
+	if err = tx.Commit(); err != nil {
 		return err
 	}
 

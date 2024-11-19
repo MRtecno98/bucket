@@ -174,7 +174,7 @@ func (c *OpenContext) ResolvePlugin(plugin Plugin) (RemotePlugin, error) {
 					scores[score] = pl
 
 					if score >= 1.0 {
-						return pl, nil
+						break
 					}
 				}
 			}
@@ -196,12 +196,16 @@ func (c *OpenContext) ResolvePlugin(plugin Plugin) (RemotePlugin, error) {
 				continue
 			}
 
-			res := CachedMatch(plugin, scores[match], r, match)
-			if err := c.SavePlugin(res); err != nil {
-				return nil, err
+			if local, ok := plugin.(LocalPlugin); ok {
+				res := CachedMatch(local, scores[match], r, match)
+				if err := c.SavePlugin(res); err != nil {
+					return nil, err
+				}
+
+				return &res, nil
 			}
 
-			return &res, nil
+			return scores[match], nil
 		}
 	}
 
