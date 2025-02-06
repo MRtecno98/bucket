@@ -371,7 +371,7 @@ func (s *ModrinthProjectSummary) GetAuthors() []string {
 	return []string{s.Author}
 }
 
-func (r *Modrinth) GetVersion(identifier string) (bucket.RemoteVersion, error) {
+func (r *Modrinth) GetVersionByID(identifier string) (bucket.RemoteVersion, error) {
 	var version ModrinthVersion
 
 	res, err := r.makreq().SetResult(&version).Get("/project/version/" + identifier)
@@ -395,7 +395,7 @@ func (p *ModrinthProject) GetRepository() bucket.Repository {
 }
 
 func (p *ModrinthProject) GetLatestVersion() (bucket.RemoteVersion, error) {
-	vers, err := p.GetVersions()
+	vers, err := p.GetVersions(1)
 	if err != nil {
 		return nil, err
 	}
@@ -403,11 +403,11 @@ func (p *ModrinthProject) GetLatestVersion() (bucket.RemoteVersion, error) {
 	return vers[0], nil
 }
 
-func (p *ModrinthProject) GetVersion(identifier string) (bucket.RemoteVersion, error) {
-	return p.repository.GetVersion(identifier)
+func (p *ModrinthProject) GetVersionByID(identifier string) (bucket.RemoteVersion, error) {
+	return p.repository.GetVersionByID(identifier)
 }
 
-func (p *ModrinthProject) GetVersions() ([]bucket.RemoteVersion, error) {
+func (p *ModrinthProject) GetVersions(limit int) ([]bucket.RemoteVersion, error) {
 	var versions []ModrinthVersion
 
 	res, err := p.repository.HttpClient.R().SetResult(&versions).Get("/project/" + p.Slug + "/version")
@@ -421,6 +421,10 @@ func (p *ModrinthProject) GetVersions() ([]bucket.RemoteVersion, error) {
 
 	var remoteVersions []bucket.RemoteVersion
 	for i := range versions {
+		if limit > 0 && i >= limit {
+			break
+		}
+
 		versions[i].ModrinthProject = *p
 		remoteVersions = append(remoteVersions, &versions[i])
 	}
@@ -433,7 +437,7 @@ func (p *ModrinthProject) GetVersionIdentifiers() ([]string, error) {
 }
 
 func (p *ModrinthProject) GetLatestCompatible(platform bucket.PlatformType) (bucket.RemoteVersion, error) {
-	versions, err := p.GetVersions()
+	versions, err := p.GetVersions(0)
 	if err != nil {
 		return nil, err
 	}
@@ -498,11 +502,11 @@ func (p *ModrinthProject) GetWebsite() string {
 	return p.WikiUrl
 }
 
-func (p *ModrinthVersion) GetIdentifier() string {
-	return p.ID
+func (p *ModrinthVersion) GetVersion() string {
+	return p.VersionNumber
 }
 
-func (p *ModrinthVersion) GetName() string {
+func (p *ModrinthVersion) GetVersionName() string {
 	return p.Name
 }
 

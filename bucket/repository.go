@@ -32,17 +32,16 @@ type RemotePlugin interface {
 
 	GetLatestCompatible(PlatformType) (RemoteVersion, error)
 	GetLatestVersion() (RemoteVersion, error)
-	GetVersions() ([]RemoteVersion, error)
-	GetVersion(identifier string) (RemoteVersion, error)
+	GetVersions(limit int) ([]RemoteVersion, error)
+	GetVersionByID(identifier string) (RemoteVersion, error)
 	GetVersionIdentifiers() ([]string, error)
 }
 
 type RemoteVersion interface {
 	RemotePlugin
 	PlatformCompatible
+	NamedVersionable
 
-	GetName() string
-	GetIdentifier() string
 	GetFiles() ([]RemoteFile, error)
 }
 
@@ -84,4 +83,18 @@ type RepositoryConstructor func(context.Context, *OpenContext, map[string]string
 
 func RegisterRepository(name string, constr RepositoryConstructor) {
 	Repositories[name] = constr
+}
+
+func GetVersionNames(p RemotePlugin) ([]string, error) {
+	vers, err := p.GetVersions(0)
+	if err != nil {
+		return nil, err
+	}
+
+	var identifiers []string
+	for _, v := range vers {
+		identifiers = append(identifiers, v.GetVersion())
+	}
+
+	return identifiers, nil
 }

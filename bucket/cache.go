@@ -56,20 +56,20 @@ func (cp *CachedPlugin) GetLatestVersion() (RemoteVersion, error) {
 	return cp.RemotePlugin.GetLatestVersion()
 }
 
-func (cp *CachedPlugin) GetVersions() ([]RemoteVersion, error) {
+func (cp *CachedPlugin) GetVersions(limit int) ([]RemoteVersion, error) {
 	if err := cp.requestIfMissing(); err != nil {
 		return nil, err
 	}
 
-	return cp.RemotePlugin.GetVersions()
+	return cp.RemotePlugin.GetVersions(limit)
 }
 
-func (cp *CachedPlugin) GetVersion(version string) (RemoteVersion, error) {
+func (cp *CachedPlugin) GetVersionByID(version string) (RemoteVersion, error) {
 	if err := cp.requestIfMissing(); err != nil {
 		return nil, err
 	}
 
-	return cp.RemotePlugin.GetVersion(version)
+	return cp.RemotePlugin.GetVersionByID(version)
 }
 
 func (cp *CachedPlugin) GetVersionIdentifiers() ([]string, error) {

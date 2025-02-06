@@ -11,6 +11,11 @@ type Versionable interface {
 	GetVersion() string
 }
 
+type NamedVersionable interface {
+	Versionable
+	GetVersionName() string
+}
+
 type PluginDescriptor interface {
 	Plugin
 	Versionable
