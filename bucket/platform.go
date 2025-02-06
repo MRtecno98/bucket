@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/MRtecno98/afero"
+	"github.com/juliangruber/go-intersect"
 )
 
 type PlatformType struct {
@@ -55,6 +56,10 @@ func (t PlatformType) EveryCompatible() []string {
 	return FindAllCompatible(&t)
 }
 
+func (t PlatformType) AnyCompatible(platforms []string) bool {
+	return len(intersect.Hash(FindAllCompatible(&t), platforms)) > 0
+}
+
 type Decoder func(pl afero.File, descriptor io.Reader, out any) error
 
 func BufferedDecode(decode func(in []byte, out any) error) Decoder {
@@ -66,17 +71,6 @@ func BufferedDecode(decode func(in []byte, out any) error) Decoder {
 
 		return decode(data, out)
 	}
-}
-
-func CompatiblePlatforms(p PlatformCompatible) []PlatformType {
-	var out []PlatformType
-	for _, v := range platforms {
-		if p.Compatible(v.Platform) {
-			out = append(out, v.Platform)
-		}
-	}
-
-	return out
 }
 
 func (p *PluginCachePlatform) Plugins() ([]Plugin, []error, error) {

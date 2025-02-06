@@ -1,14 +1,15 @@
 module github.com/MRtecno98/bucket
 
-go 1.21
+go 1.23
 
-toolchain go1.21.4
+toolchain go1.23.3
 
 require (
 	github.com/MRtecno98/afero v1.9.6
 	github.com/gnames/levenshtein v0.4.0
 	github.com/go-resty/resty/v2 v2.13.1
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/juliangruber/go-intersect v1.1.0
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/sunxyw/go-spiget v1.0.0
 	github.com/urfave/cli/v2 v2.27.2

@@ -114,6 +114,15 @@ func DetectJarPathDirs(dirs []string, context *OpenContext, filter func(path str
 	})
 }
 
+func GetPlatform(name string) *PlatformType {
+	p, ok := platforms[name]
+	if !ok {
+		return nil
+	}
+
+	return &p.Platform
+}
+
 func FindAllCompatible(platform *PlatformType) []string {
 	set := map[string]struct{}{}
 	set[platform.Name] = struct{}{}

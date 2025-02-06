@@ -300,23 +300,32 @@ func (s *SpigotMC) categoryCompatible(scat spiget.Category, platform bucket.Plat
 		return false
 	}
 
-	for _, p := range cat.CompatiblePlatforms {
-		if p == platform.Name {
-			return true
-		}
+	return cat.Compatible(platform.Name)
+}
+
+func (r *SpigotResource) CompatiblePlatforms() ([]string, error) {
+	cat, err := spigotmc.GetCategory(r.Category)
+	if err != nil {
+		return nil, err
 	}
 
-	return false
+	var plts []string
+	for _, p := range cat.CompatiblePlatforms() {
+		plts = append(plts, bucket.FindAllCompatible(bucket.GetPlatform(p))...)
+	}
+
+	slices.Sort(plts)
+
+	return slices.Compact(plts), nil
 }
 
 func (r *SpigotResource) Compatible(platform bucket.PlatformType) bool {
-	res := r.repository.categoryCompatible(r.Category, platform)
-	if !res {
-		v, err := r.GetLatestCompatible(platform)
-		return err == nil && v != nil
+	plts, err := r.CompatiblePlatforms()
+	if err != nil {
+		return false
 	}
 
-	return res
+	return platform.AnyCompatible(plts)
 }
 
 func (r *SpigotResource) GetIdentifier() string {
@@ -369,10 +378,6 @@ func (v *SpigotVersionInfo) GetCategory() (*spigotmc.Category, error) {
 	return spigotmc.GetCategory(v.Category)
 }
 
-func (v *SpigotVersionInfo) Compatible(platform bucket.PlatformType) bool {
-	return v.repository.categoryCompatible(v.Category, platform)
-}
-
 func (v *SpigotVersionInfo) Get() (*SpigotVersion, error) {
 	u := fmt.Sprintf("resources/%d/versions/%d", v.Resource.ID, v.ID)
 	req, err := v.repository.Client.NewRequest("GET", u, nil)
@@ -392,10 +397,6 @@ func (v *SpigotVersion) GetName() string {
 
 func (v *SpigotVersion) GetDependencies() []bucket.Dependency {
 	panic("not implemented") // TODO: Implement
-}
-
-func (v *SpigotVersion) Compatible(platform bucket.PlatformType) bool {
-	return slices.Contains(platform.EveryCompatible(), platforms.SpigotTypePlatform.Name)
 }
 
 func (v *SpigotVersion) GetFiles() ([]bucket.RemoteFile, error) {
