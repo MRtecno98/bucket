@@ -179,6 +179,13 @@ func (c *OpenContext) ResolvePlugin(plugin Plugin) (RemotePlugin, error) {
 				}
 			}
 
+			if DEBUG {
+				for _, v := range keys {
+					log.Printf("%s candidate: %s\t\t\tscore: %f [%s]\n",
+						plugin.GetName(), scores[v].GetName(), v, scores[v].GetRepository().Provider())
+				}
+			}
+
 			if len(keys) == 0 {
 				gerr = multierror.Append(gerr, fmt.Errorf(
 					"%d candidates found for \"%s\" but none are compatible with platform \"%s\"",
