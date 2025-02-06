@@ -364,7 +364,7 @@ func (s *ModrinthProjectSummary) UnmarshalJSON(data []byte) error {
 }
 
 func (s *ModrinthProjectSummary) GetAuthors() []string {
-	if s.authors != nil && len(s.authors) != 0 {
+	if len(s.authors) != 0 {
 		return s.ModrinthProject.GetAuthors()
 	}
 

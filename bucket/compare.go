@@ -53,7 +53,7 @@ func MatchingComparison(a, b []string) float64 {
 
 		maxindex := 0
 		var max float64 = -1
-		for i, authB := range a { // Check every strings in B
+		for i, authB := range b { // Check every strings in B
 			if slices.Contains(maxes, i) { // Ignore previously paired strings
 				continue
 			}
