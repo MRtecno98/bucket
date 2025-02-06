@@ -143,18 +143,37 @@ func (c *OpenContext) SavePlugin(plugin CachedPlugin) error {
 	return nil
 }
 
-func (c *OpenContext) _savePlugin(plugin CachedPlugin) error {
-	if _, err := c.Database.Exec(
-		`INSERT INTO plugins 
+func (c *OpenContext) _savePlugin(plugins ...CachedPlugin) error {
+	var q strings.Builder
+	var args []any
+
+	if len(plugins) == 0 {
+		return nil
+	}
+
+	args = make([]any, 0, len(plugins)*9)
+
+	q.WriteString(`INSERT INTO plugins 
 		(identifier, remote_identifier, 
 		 filename, 
 		 name, repository, confidence,
 		 authors, description, website) 
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		plugin.LocalIdentifier, plugin.RemoteIdentifier, plugin.File,
-		plugin.GetName(), plugin.Repository.GetName(), plugin.Confidence,
-		strings.Join(plugin.GetAuthors(), ","),
-		plugin.GetDescription(), plugin.GetWebsite()); err != nil {
+		 VALUES `)
+
+	for i, plugin := range plugins {
+		q.WriteString("(?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		if i != len(plugins)-1 {
+			q.WriteString(", ")
+		}
+
+		args = append(args,
+			plugin.LocalIdentifier, plugin.RemoteIdentifier, plugin.File,
+			plugin.GetName(), plugin.Repository.GetName(), plugin.Confidence,
+			strings.Join(plugin.GetAuthors(), ","),
+			plugin.GetDescription(), plugin.GetWebsite())
+	}
+
+	if _, err := c.Database.Exec(q.String(), args...); err != nil {
 		return fmt.Errorf("db save (no data was modified): %w", err)
 	}
 
@@ -167,10 +186,8 @@ func (c *OpenContext) SavePluginDatabase() error {
 		return err
 	}
 
-	for _, plugin := range c.Plugins.Values() {
-		if c._savePlugin(plugin) != nil {
-			return tx.Rollback()
-		}
+	if c._savePlugin(c.Plugins.Values()...) != nil {
+		return tx.Rollback()
 	}
 
 	return tx.Commit()
