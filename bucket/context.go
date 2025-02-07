@@ -38,34 +38,75 @@ type Workspace struct {
 	Contexts []*OpenContext
 }
 
-func (w *Workspace) RunWithContext(name string, action func(*OpenContext, *log.Logger) error) error {
+func (oc *OpenContext) RunTask(task *Task) (error, bool) {
+	var newline, n bool
+
+	for _, t := range task.Depends() {
+		if err, n := oc.RunTask(t); err != nil {
+			return err, newline || n
+		}
+
+		newline = newline || n
+	}
+
+	if err, n := oc.Run(task.Name, task.Func); err != nil {
+		return err, newline || n
+	}
+
+	newline = newline || n
+
+	for _, t := range task.After() {
+		if err, n := oc.RunTask(t); err != nil {
+			return err, newline || n
+		}
+
+		newline = newline || n
+	}
+
+	return nil, newline
+}
+
+func (c *OpenContext) Run(name string, action TaskFunc) (error, bool) {
+	var newline bool = false
+
+	fmt.Printf(":%s [%s]\n", name, c.Name)
+
+	out := util.NewLookbackCountingWriter(os.Stdout, 2)
+	logger := log.New(out, "", log.Lmsgprefix)
+
+	err := action(c, logger)
+
+	if out.BytesWritten > 0 {
+		for _, v := range out.LastBytes {
+			if v != '\n' {
+				logger.Println()
+			}
+		}
+
+		newline = true
+	}
+
+	if err != nil {
+		logger.Printf(":%s [%s] FAILED: %s\n\n", name, c.Name, err)
+		return fmt.Errorf("%s: %v", c.Name, err), true
+	}
+
+	return nil, newline
+}
+
+func (w *Workspace) RunWithContext(name string, action TaskFunc) error {
+	return w.RunTaskWithContext(&Task{Name: name, Func: action})
+}
+
+func (w *Workspace) RunTaskWithContext(task *Task) error {
 	var res error = &multierror.Error{Errors: []error{}}
 	var newline bool = false
+
 	for _, c := range w.Contexts {
-		fmt.Printf(":%s [%s]\n", name, c.Name)
+		err, n := c.RunTask(task)
+		newline = newline || n
 
-		out := util.NewLookbackCountingWriter(os.Stdout, 2)
-		logger := log.New(out, "", log.Lmsgprefix)
-
-		err := action(c, logger)
-		if err != nil {
-			res = multierror.Append(fmt.Errorf("%s: %v", c.Name, err), res)
-		}
-
-		if out.BytesWritten > 0 {
-			for _, v := range out.LastBytes {
-				if v != '\n' {
-					logger.Println()
-				}
-			}
-
-			newline = true
-		}
-
-		if err != nil {
-			logger.Printf(":%s [%s] FAILED: %s\n\n", name, c.Name, err)
-			newline = true
-		}
+		multierror.Append(res, err)
 	}
 
 	if !newline && len(w.Contexts) > 1 {

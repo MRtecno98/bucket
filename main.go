@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/MRtecno98/afero"
@@ -18,6 +17,7 @@ import (
 
 	_ "github.com/MRtecno98/bucket/bucket/platforms"
 	_ "github.com/MRtecno98/bucket/bucket/repositories"
+	"github.com/MRtecno98/bucket/bucket/tasks"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -189,55 +189,18 @@ func main() {
 				Before:  InitializeContexts(true),
 				After:   ShutdownContexts,
 				Action: func(c *cli.Context) error {
-					return w.RunWithContext("add", func(oc *bucket.OpenContext, log *log.Logger) error {
-						if oc.Platform == nil {
-							// TODO: make so that we don't have to repeat this for every action
-							return fmt.Errorf("no platform detected")
-						}
+					return w.RunTaskWithContext(tasks.AddPlugin)
+				},
+			},
 
-						pls, _, err := oc.Platform.Plugins()
-						if err != nil {
-							return err
-						}
-
-						var wait sync.WaitGroup
-						wait.Add(len(pls))
-						for _, pli := range pls {
-							f := func(pl bucket.Plugin) {
-								defer wait.Done()
-								res, err := oc.ResolvePlugin(pl)
-								if err != nil {
-									log.Printf("error resolving plugin %s: %v\n", pl.GetName(), err)
-									return
-								}
-
-								ver, err := res.GetLatestVersion()
-								if err != nil {
-									log.Printf("error getting latest version for %s: %v\n", res.GetIdentifier(), err)
-									return
-								}
-
-								var ind float64
-								if c, ok := res.(*bucket.CachedPlugin); ok {
-									ind = c.Confidence
-								} else {
-									ind = bucket.ComparisonIndex(pl, res)
-								}
-
-								log.Printf("found plugin: %s [%s] %s %s%s %f\n", pl.GetName(), res.GetRepository().Provider(), res.GetName(),
-									ver.GetName(), res.GetAuthors(), ind)
-							}
-
-							if bucket.GlobalConfig.Multithread {
-								go f(pli)
-							} else {
-								f(pli)
-							}
-						}
-
-						wait.Wait()
-
-						return nil
+			{
+				Name:   "debug",
+				Usage:  "runs debug routine",
+				Before: InitializeContexts(true),
+				After:  ShutdownContexts,
+				Action: func(c *cli.Context) error {
+					return w.RunWithContext("debug", func(oc *bucket.OpenContext, log *log.Logger) error {
+						return bucket.DebugRoutine(oc, log)
 					})
 				},
 			},

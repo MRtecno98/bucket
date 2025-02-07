@@ -2,7 +2,9 @@ package bucket
 
 import (
 	"fmt"
+	"log"
 	"reflect"
+	"sync"
 	"unsafe"
 
 	"github.com/MRtecno98/afero"
@@ -36,4 +38,55 @@ func LogContexts(w *Workspace) {
 
 		fmt.Println()
 	}
+}
+
+func DebugRoutine(oc *OpenContext, logger *log.Logger) error {
+	if oc.Platform == nil {
+		// TODO: make so that we don't have to repeat this for every action
+		return fmt.Errorf("no platform detected")
+	}
+
+	pls, _, err := oc.Platform.Plugins()
+	if err != nil {
+		return err
+	}
+
+	var wait sync.WaitGroup
+	wait.Add(len(pls))
+	for _, pli := range pls {
+		f := func(pl Plugin) {
+			defer wait.Done()
+			res, err := oc.ResolvePlugin(pl)
+			if err != nil {
+				logger.Printf("error resolving plugin %s: %v\n", pl.GetName(), err)
+				return
+			}
+
+			ver, err := res.GetLatestVersion()
+			if err != nil {
+				logger.Printf("error getting latest version for %s: %v\n", res.GetIdentifier(), err)
+				return
+			}
+
+			var ind float64
+			if c, ok := res.(*CachedPlugin); ok {
+				ind = c.Confidence
+			} else {
+				ind = ComparisonIndex(pl, res)
+			}
+
+			logger.Printf("found plugin: %s [%s] %s %s%s %f\n", pl.GetName(), res.GetRepository().Provider(), res.GetName(),
+				ver.GetName(), res.GetAuthors(), ind)
+		}
+
+		if GlobalConfig.Multithread {
+			go f(pli)
+		} else {
+			f(pli)
+		}
+	}
+
+	wait.Wait()
+
+	return nil
 }
