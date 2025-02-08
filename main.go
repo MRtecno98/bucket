@@ -154,6 +154,12 @@ func main() {
 				Usage:       "write a cpu profile",
 				Destination: &profile,
 			},
+
+			&cli.BoolFlag{
+				Name:    "plain",
+				Usage:   "disables ANSI formatted output",
+				EnvVars: []string{"bucket.plain"},
+			},
 		},
 
 		Before: func(c *cli.Context) error {
@@ -169,6 +175,10 @@ func main() {
 				if err != nil {
 					return err
 				}
+			}
+
+			if c.Bool("plain") {
+				os.Setenv("bucket.plain", "true")
 			}
 
 			stamp = time.Now()
