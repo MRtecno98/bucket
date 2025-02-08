@@ -40,27 +40,31 @@ type Workspace struct {
 
 func (oc *OpenContext) RunTask(task *Task) (error, bool) {
 	var newline, n bool
+	var err error
 
 	for _, t := range task.Depends() {
-		if err, n := oc.RunTask(t); err != nil {
+		err, n = oc.RunTask(t)
+		newline = newline || n
+
+		if err != nil {
 			return err, newline || n
 		}
-
-		newline = newline || n
 	}
 
-	if err, n := oc.Run(task.Name, task.Func); err != nil {
-		return err, newline || n
-	}
-
+	err, n = oc.Run(task.Name, task.Func)
 	newline = newline || n
 
+	if err != nil {
+		return err, newline
+	}
+
 	for _, t := range task.After() {
-		if err, n := oc.RunTask(t); err != nil {
+		err, n = oc.RunTask(t)
+		newline = newline || n
+
+		if err != nil {
 			return err, newline || n
 		}
-
-		newline = newline || n
 	}
 
 	return nil, newline
@@ -77,7 +81,7 @@ func (c *OpenContext) Run(name string, action TaskFunc) (error, bool) {
 	err := action(c, logger)
 
 	if out.BytesWritten > 0 {
-		for _, v := range out.LastBytes {
+		for _, v := range slices.Clone(out.LastBytes) {
 			if v != '\n' {
 				logger.Println()
 			}
