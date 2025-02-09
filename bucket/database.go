@@ -237,6 +237,15 @@ func (c *OpenContext) CreateTables() error {
 	return nil
 }
 
+func (oc *OpenContext) DbSize() (int, error) {
+	inf, err := oc.Fs.Stat(DATABASE_NAME)
+	if err != nil {
+		return -1, nil
+	}
+
+	return int(inf.Size()), nil
+}
+
 func (oc *OpenContext) CleanCache() error {
 	if oc.Database != nil {
 		if err := oc.Database.Close(); err != nil {

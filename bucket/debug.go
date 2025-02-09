@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	"github.com/MRtecno98/afero"
+	"github.com/hashicorp/go-multierror"
 )
 
 var DEBUG = false
@@ -53,18 +54,23 @@ func DebugRoutine(oc *OpenContext, logger *log.Logger) error {
 
 	var wait sync.WaitGroup
 	wait.Add(len(pls))
+
+	var errs error = nil
+
 	for _, pli := range pls {
 		f := func(pl Plugin) {
 			defer wait.Done()
 			res, err := oc.ResolvePlugin(pl)
 			if err != nil {
-				logger.Printf("error resolving plugin %s: %v\n", pl.GetName(), err)
+				multierror.Append(errs,
+					fmt.Errorf("error resolving plugin %s: %v", pl.GetName(), err))
 				return
 			}
 
 			ver, err := res.GetLatestVersion()
 			if err != nil {
-				logger.Printf("error getting latest version for %s: %v\n", res.GetIdentifier(), err)
+				multierror.Append(errs,
+					fmt.Errorf("error getting latest version for %s: %v", res.GetIdentifier(), err))
 				return
 			}
 
@@ -88,5 +94,5 @@ func DebugRoutine(oc *OpenContext, logger *log.Logger) error {
 
 	wait.Wait()
 
-	return nil
+	return errs
 }

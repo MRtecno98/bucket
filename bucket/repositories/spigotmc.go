@@ -421,7 +421,7 @@ func (v *SpigotVersion) GetFiles() ([]bucket.RemoteFile, error) {
 }
 
 func (f *SpigotFile) Name() string {
-	return f.SpigotVersion.Name
+	return f.SpigotVersion.GetVersion()
 }
 
 func (f *SpigotFile) Optional() bool {
