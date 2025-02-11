@@ -47,7 +47,11 @@ func DebugRoutine(oc *OpenContext, logger *log.Logger) error {
 		return fmt.Errorf("no platform detected")
 	}
 
-	pls, _, err := oc.Platform.Plugins()
+	pls, perrs, err := oc.Platform.Plugins()
+	if perrs != nil {
+		return multierror.Append(err, perrs...)
+	}
+
 	if err != nil {
 		return err
 	}
