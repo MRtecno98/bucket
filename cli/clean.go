@@ -21,7 +21,26 @@ var CLEAN = &cli.Command{
 			}
 
 			log.Printf("deleting database file (%d KB)\n", size/1024)
-			return oc.CleanCache()
+			if err := oc.CleanCache(); err != nil {
+				return err
+			}
+
+			if c.Args().Len() > 0 {
+				if c.Args().Get(0) == "all" {
+					var size int64
+
+					if size, err = oc.PluginsSize(); err != nil {
+						return err
+					}
+
+					log.Printf("deleting plugin cache (%.2f MB)\n", float64(size)/1024/1024)
+					if err = oc.Fs.RemoveAll(oc.Platform.PluginsFolder()); err != nil {
+						return err
+					}
+				}
+			}
+
+			return nil
 		})
 	},
 }

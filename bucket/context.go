@@ -179,6 +179,30 @@ func (c *OpenContext) Config() *Config {
 	}
 }
 
+func (c *OpenContext) PluginsSize() (int64, error) {
+	var size int64 = 0
+
+	if ex, err := c.Fs.DirExists(c.Platform.PluginsFolder()); !ex || err != nil {
+		return 0, err
+	}
+
+	if err := c.Fs.Walk(c.Platform.PluginsFolder(), func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			size += info.Size()
+		}
+
+		return nil
+	}); err != nil {
+		return 0, err
+	}
+
+	return size, nil
+}
+
 func (c *OpenContext) LoadPlatform() error {
 	if c.LocalConfig != nil && c.LocalConfig.Platform != "" {
 		if pltype, ok := platforms[c.LocalConfig.Platform]; ok {
