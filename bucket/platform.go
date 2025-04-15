@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/MRtecno98/afero"
+	"github.com/hashicorp/go-multierror"
 	"github.com/juliangruber/go-intersect"
 )
 
@@ -25,7 +26,7 @@ type PlatformCompatible interface {
 type PluginProvider interface {
 	PluginsFolder() string
 	Plugins() ([]Plugin, []error, error)
-	LoadPlugin(filename string) (Plugin, error)
+	LoadPlugin(filename string) (*LocalPlugin, error)
 }
 
 type Platform interface {
@@ -46,7 +47,7 @@ type PluginCachePlatform struct {
 type JarPluginPlatform[T PluginDescriptor] struct {
 	ContextPlatform
 
-	PluginFile   string
+	PluginFiles  []string
 	PluginFolder string
 
 	Decode Decoder
@@ -159,12 +160,14 @@ func (p JarPluginPlatform[PluginType]) Plugins() ([]Plugin, []error, error) {
 
 	if len(errs) > 0 {
 		err = errors.New("some plugins couldn't be loaded")
+	} else {
+		errs = nil
 	}
 
 	return plugins, errs, err
 }
 
-func (p JarPluginPlatform[PluginType]) LoadPlugin(filename string) (Plugin, error) {
+func (p JarPluginPlatform[PluginType]) LoadPlugin(filename string) (*LocalPlugin, error) {
 	file, err := p.Context.Fs.Open(p.PluginsFolder() + "/" + filename)
 	if err != nil {
 		return nil, err
@@ -175,8 +178,18 @@ func (p JarPluginPlatform[PluginType]) LoadPlugin(filename string) (Plugin, erro
 		return nil, err
 	}
 
-	descriptor, err := jar.Open(p.PluginFile)
-	if err != nil {
+	var descriptor afero.File
+	for _, pluginFile := range p.PluginFiles {
+		descriptor, err = jar.Open(pluginFile)
+		if err != nil {
+			multierror.Append(err, fmt.Errorf("unable to open %s: %w", pluginFile, err))
+			continue
+		}
+
+		break
+	}
+
+	if descriptor == nil {
 		return nil, err
 	}
 
@@ -185,5 +198,5 @@ func (p JarPluginPlatform[PluginType]) LoadPlugin(filename string) (Plugin, erro
 	var plt PluginType
 	err = p.Decode(file, descriptor, &plt)
 
-	return LocalPlugin{PluginDescriptor: plt, File: file}, err
+	return &LocalPlugin{PluginDescriptor: plt, File: file}, err
 }

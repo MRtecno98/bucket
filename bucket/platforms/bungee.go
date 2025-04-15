@@ -35,7 +35,7 @@ func NewBungeePlatform(context *bucket.OpenContext) *BungeePlatform {
 			PluginProvider: bucket.JarPluginPlatform[SpigotPluginDescriptor]{
 				ContextPlatform: bucket.ContextPlatform{Context: context},
 				Decode:          bucket.BufferedDecode(yaml.Unmarshal),
-				PluginFile:      "bungee.yml",
+				PluginFiles:     []string{"bungee.yml"},
 				PluginFolder:    "plugins",
 			},
 		},
