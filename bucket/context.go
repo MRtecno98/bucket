@@ -249,7 +249,7 @@ func (c *OpenContext) ResolvePlugin(plugin Plugin) (RemotePlugin, error) {
 			}
 
 			if local, ok := plugin.(LocalPlugin); ok {
-				res := CachedMatch(local, scores[match], r, match)
+				res := CachedMatch(&local, scores[match], r, match)
 				if err := c.SavePlugin(res); err != nil {
 					return nil, err
 				}

@@ -28,7 +28,7 @@ type CachedPlugin struct {
 	Confidence float64
 }
 
-func CachedMatch(local LocalPlugin, remote RemotePlugin, repo NamedRepository, conf float64) CachedPlugin {
+func CachedMatch(local *LocalPlugin, remote RemotePlugin, repo NamedRepository, conf float64) CachedPlugin {
 	return CachedPlugin{
 		RemotePlugin:     remote,
 		LocalIdentifier:  local.GetIdentifier(),
@@ -153,7 +153,7 @@ func (c *OpenContext) _savePlugin(plugins ...CachedPlugin) error {
 
 	args = make([]any, 0, len(plugins)*9)
 
-	q.WriteString(`INSERT INTO plugins 
+	q.WriteString(`REPLACE INTO plugins 
 		(identifier, remote_identifier, 
 		 filename, 
 		 name, repository, confidence,
