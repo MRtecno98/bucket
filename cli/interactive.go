@@ -165,9 +165,9 @@ func (t *Table) Render(cursor bool, indexes bool) {
 		}
 
 		if i == t.Selected && cursor {
-			fmt.Fprintf(t.Writer, "\033[1m> %s\033[0m\n", v)
+			fmt.Fprintf(t.Writer, "\033[1m> %s\033[0m\r\n", v)
 		} else {
-			fmt.Fprintln(t.Writer, v)
+			fmt.Fprintln(t.Writer, v+"\r")
 		}
 	}
 }

@@ -336,15 +336,20 @@ func (r *Modrinth) SearchAll(query string, max int) ([]bucket.RemotePlugin, int,
 }
 
 func (r *Modrinth) Search(query string, max int) ([]bucket.RemotePlugin, int, error) {
-	loaders := r.Context.Platform.Type().EveryCompatible()
-	for i, v := range loaders {
-		loaders[i] = fmt.Sprintf("\"categories:%s\"", v)
+	qmap := map[string]string{
+		"query": query,
 	}
 
-	return r.search(map[string]string{
-		"query":  query,
-		"facets": fmt.Sprintf("[[%s]]", strings.Join(loaders, ", ")),
-	}, max)
+	if r.Context.Platform != nil {
+		loaders := r.Context.Platform.Type().EveryCompatible()
+		for i, v := range loaders {
+			loaders[i] = fmt.Sprintf("\"categories:%s\"", v)
+		}
+
+		qmap["facets"] = fmt.Sprintf("[[%s]]", strings.Join(loaders, ", "))
+	}
+
+	return r.search(qmap, max)
 }
 
 func (s *ModrinthProjectSummary) UnmarshalJSON(data []byte) error {
@@ -528,6 +533,10 @@ func (p *ModrinthVersion) Compatible(platform bucket.PlatformType) bool {
 func (p *ModrinthVersion) GetFiles() ([]bucket.RemoteFile, error) {
 	var remoteFiles []bucket.RemoteFile
 	for i := range p.Files {
+		if p.Files[i].repository == nil {
+			p.Files[i].repository = p.repository
+		}
+
 		remoteFiles = append(remoteFiles, &p.Files[i])
 	}
 
