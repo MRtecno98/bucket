@@ -20,7 +20,7 @@
 			"request": "launch",
 			"mode": "debug",
 			"program": "main.go",
-			"args": ["-j=false", "add", "essentialsx"]
+			"args": ["-c", "test", "-j=false", "debug"]
 		}
 	]
 }

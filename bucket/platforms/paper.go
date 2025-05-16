@@ -30,7 +30,17 @@ func (p *PaperPlatform) Type() bucket.PlatformType {
 }
 
 func NewPaperPlatform(context *bucket.OpenContext) *PaperPlatform {
-	return &PaperPlatform{*NewSpigotPlatform(context)}
+	spigot := NewSpigotPlatform(context)
+	p := spigot.PluginProvider.(bucket.JarPluginPlatform[SpigotPluginDescriptor])
+
+	p.PluginFiles = append(p.PluginFiles, "paper-plugin.yml")
+	return &PaperPlatform{
+		SpigotPlatform: SpigotPlatform{
+			PluginCachePlatform: bucket.PluginCachePlatform{
+				PluginProvider: p,
+			},
+		},
+	}
 }
 
 func DetectPaper(context *bucket.OpenContext) (bucket.Platform, error) {

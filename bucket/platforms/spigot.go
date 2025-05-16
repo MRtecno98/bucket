@@ -65,7 +65,7 @@ func (p SpigotPlatform) Type() bucket.PlatformType {
 }
 
 func (pl SpigotPluginDescriptor) GetDependencies() []bucket.Dependency {
-	var deps []bucket.Dependency = make([]bucket.Dependency, 0, len(pl.Depends)+len(pl.SoftDepends))
+	var deps = make([]bucket.Dependency, 0, len(pl.Depends)+len(pl.SoftDepends))
 
 	for _, dep := range pl.Depends {
 		deps = append(deps, bucket.Dependency{Name: dep, Required: true})
@@ -84,7 +84,7 @@ func NewSpigotPlatform(context *bucket.OpenContext) *SpigotPlatform {
 			PluginProvider: bucket.JarPluginPlatform[SpigotPluginDescriptor]{
 				ContextPlatform: bucket.ContextPlatform{Context: context},
 				Decode:          bucket.BufferedDecode(yaml.Unmarshal),
-				PluginFile:      "plugin.yml",
+				PluginFiles:     []string{"plugin.yml"},
 				PluginFolder:    "plugins",
 			},
 		},

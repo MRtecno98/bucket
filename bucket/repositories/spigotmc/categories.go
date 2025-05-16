@@ -2,6 +2,7 @@ package spigotmc
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/MRtecno98/bucket/bucket/platforms"
 	"github.com/sunxyw/go-spiget/spiget"
@@ -42,27 +43,30 @@ type Category struct {
 	ID            int
 	Subcategories []Category
 
-	CompatiblePlatforms []string
+	compatiblePlatforms []string
 }
 
 var Categories = []Category{
 	{ID: BungeeSpigot, Subcategories: []Category{
-		{ID: Transportation5}, {ID: Chat6}, {ID: Utilities7}, {ID: Misc8},
-	}, CompatiblePlatforms: []string{platforms.BungeeTypePlatform.Name, platforms.SpigotTypePlatform.Name}},
+		{ID: Transportation5}, {ID: Chat6}, {ID: Utilities7}, {ID: Misc8}, {ID: Universal},
+	}, compatiblePlatforms: []string{platforms.BungeeTypePlatform.Name, platforms.SpigotTypePlatform.Name}},
 
 	{ID: BungeeProxy, Subcategories: []Category{
-		{ID: Libraries9}, {ID: Transportation10}, {ID: Chat11}, {ID: Utilities12}, {ID: Misc13},
-	}, CompatiblePlatforms: []string{platforms.BungeeTypePlatform.Name}},
+		{ID: Libraries9}, {ID: Transportation10}, {ID: Chat11}, {ID: Utilities12}, {ID: Misc13}, {ID: Universal},
+	}, compatiblePlatforms: []string{platforms.BungeeTypePlatform.Name}},
 
 	{ID: Spigot, Subcategories: []Category{
 		{ID: Chat14}, {ID: Utilities15}, {ID: Misc16}, {ID: Fun}, {ID: WorldManagement},
-		{ID: Mechanics}, {ID: Economy}, {ID: GameMode}, {ID: Skript}, {ID: Libraries26},
-		{ID: NoRating},
-	}, CompatiblePlatforms: []string{platforms.SpigotTypePlatform.Name,
+		{ID: Mechanics}, {ID: Economy}, {ID: GameMode} /* {ID: Skript}, */, {ID: Libraries26},
+		{ID: NoRating}, {ID: Universal},
+	}, compatiblePlatforms: []string{platforms.SpigotTypePlatform.Name,
 		platforms.PaperTypePlatform.Name, platforms.PurpurTypePlatform.Name}},
 
+	{ID: Universal, Subcategories: []Category{
+		{ID: BungeeSpigot}, {ID: BungeeProxy}, {ID: Spigot}, {ID: Standalone},
+	}},
+
 	{ID: Standalone, Subcategories: []Category{}},
-	{ID: Universal, Subcategories: []Category{}},
 	{ID: Premium, Subcategories: []Category{}},
 	{ID: Web, Subcategories: []Category{}},
 	{ID: DataPack, Subcategories: []Category{}},
@@ -89,21 +93,17 @@ func AllCategories() []Category {
 }
 
 func (c Category) Compatible(platform string) bool {
-	for _, p := range c.CompatiblePlatforms {
-		if p == platform {
-			return true
-		}
-	}
+	return slices.Contains(c.compatiblePlatforms, platform)
+}
 
+func (c *Category) CompatiblePlatforms() []string {
+	var platforms []string
 	for _, cat := range c.Parents() {
-		for _, p := range cat.CompatiblePlatforms {
-			if p == platform {
-				return true
-			}
-		}
+		platforms = append(platforms, cat.compatiblePlatforms...)
 	}
 
-	return false
+	slices.Sort(platforms)
+	return slices.Compact(platforms)
 }
 
 func (c Category) Parents() []Category {

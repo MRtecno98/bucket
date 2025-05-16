@@ -15,7 +15,7 @@ Development is currently ongoing
 	- [X] Modrinth API integration
 	- [ ] Custom repository protocol
 - [ ] Download and install plugins
-- [X] Resolve local plugins
+- [X] Resolve local plugins **[WIP]**
 	- [X] Differential confidence check
 	- [X] Local database
 	- [X] Resolution caching

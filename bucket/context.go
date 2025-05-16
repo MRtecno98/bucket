@@ -38,34 +38,79 @@ type Workspace struct {
 	Contexts []*OpenContext
 }
 
-func (w *Workspace) RunWithContext(name string, action func(*OpenContext, *log.Logger) error) error {
+func (oc *OpenContext) RunTask(task *Task) (error, bool) {
+	var newline, n bool
+	var err error
+
+	for _, t := range task.Depends() {
+		err, n = oc.RunTask(t)
+		newline = newline || n
+
+		if err != nil {
+			return err, newline || n
+		}
+	}
+
+	err, n = oc.Run(task.Name, task.Func)
+	newline = newline || n
+
+	if err != nil {
+		return err, newline
+	}
+
+	for _, t := range task.After() {
+		err, n = oc.RunTask(t)
+		newline = newline || n
+
+		if err != nil {
+			return err, newline || n
+		}
+	}
+
+	return nil, newline
+}
+
+func (c *OpenContext) Run(name string, action TaskFunc) (error, bool) {
+	var newline bool = false
+
+	fmt.Printf(":%s [%s]\n", name, c.Name)
+
+	out := util.NewLookbackCountingWriter(os.Stdout, 2)
+	logger := log.New(out, "", log.Lmsgprefix)
+
+	err := action(c, logger)
+
+	if out.BytesWritten > 0 {
+		for _, v := range slices.Clone(out.LastBytes) {
+			if v != '\n' {
+				logger.Println()
+			}
+		}
+
+		newline = true
+	}
+
+	if err != nil {
+		logger.Printf(":%s [%s] FAILED: %s\n\n", name, c.Name, err)
+		return fmt.Errorf("%s: %v", c.Name, err), true
+	}
+
+	return nil, newline
+}
+
+func (w *Workspace) RunWithContext(name string, action TaskFunc) error {
+	return w.RunTaskWithContext(&Task{Name: name, Func: action})
+}
+
+func (w *Workspace) RunTaskWithContext(task *Task) error {
 	var res error = &multierror.Error{Errors: []error{}}
 	var newline bool = false
+
 	for _, c := range w.Contexts {
-		fmt.Printf(":%s [%s]\n", name, c.Name)
+		err, n := c.RunTask(task)
+		newline = newline || n
 
-		out := util.NewLookbackCountingWriter(os.Stdout, 2)
-		logger := log.New(out, "", log.Lmsgprefix)
-
-		err := action(c, logger)
-		if err != nil {
-			res = multierror.Append(fmt.Errorf("%s: %v", c.Name, err), res)
-		}
-
-		if out.BytesWritten > 0 {
-			for _, v := range out.LastBytes {
-				if v != '\n' {
-					logger.Println()
-				}
-			}
-
-			newline = true
-		}
-
-		if err != nil {
-			logger.Printf(":%s [%s] FAILED: %s\n\n", name, c.Name, err)
-			newline = true
-		}
+		multierror.Append(res, err)
 	}
 
 	if !newline && len(w.Contexts) > 1 {
@@ -138,6 +183,30 @@ func (c *OpenContext) Config() *Config {
 	}
 }
 
+func (c *OpenContext) PluginsSize() (int64, error) {
+	var size int64 = 0
+
+	if ex, err := c.Fs.DirExists(c.Platform.PluginsFolder()); !ex || err != nil {
+		return 0, err
+	}
+
+	if err := c.Fs.Walk(c.Platform.PluginsFolder(), func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			size += info.Size()
+		}
+
+		return nil
+	}); err != nil {
+		return 0, err
+	}
+
+	return size, nil
+}
+
 func (c *OpenContext) LoadPlatform() error {
 	if c.LocalConfig != nil && c.LocalConfig.Platform != "" {
 		if pltype, ok := platforms[c.LocalConfig.Platform]; ok {
@@ -178,8 +247,15 @@ func (c *OpenContext) ResolvePlugin(plugin Plugin) (RemotePlugin, error) {
 					scores[score] = pl
 
 					if score >= 1.0 {
-						return pl, nil
+						break
 					}
+				}
+			}
+
+			if DEBUG {
+				for _, v := range keys {
+					log.Printf("%s candidate: %s\t\t\tscore: %f [%s]\n",
+						plugin.GetName(), scores[v].GetName(), v, scores[v].GetRepository().Provider())
 				}
 			}
 
@@ -200,12 +276,16 @@ func (c *OpenContext) ResolvePlugin(plugin Plugin) (RemotePlugin, error) {
 				continue
 			}
 
-			res := CachedMatch(plugin, scores[match], r, match)
-			if err := c.SavePlugin(res); err != nil {
-				return nil, err
+			if local, ok := plugin.(LocalPlugin); ok {
+				res := CachedMatch(&local, scores[match], r, match)
+				if err := c.SavePlugin(res); err != nil {
+					return nil, err
+				}
+
+				return &res, nil
 			}
 
-			return &res, nil
+			return scores[match], nil
 		}
 	}
 
