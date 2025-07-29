@@ -15,7 +15,7 @@ var CLEAN = &cli.Command{
 	After:   ShutdownContexts,
 	Action: func(c *cli.Context) error {
 		return Workspace.RunWithContext("clean", func(oc *bucket.OpenContext, log *log.Logger) error {
-			size, err := oc.DbSize()
+			size, err := oc.DBSize()
 			if err != nil {
 				return err
 			}

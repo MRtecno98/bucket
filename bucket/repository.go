@@ -58,11 +58,11 @@ type LockRepository struct {
 	Lock context.Context
 }
 
-type HttpRepository struct {
+type HTTPRepository struct {
 	Repository
 
 	Endpoint   string
-	HttpClient *resty.Client
+	HTTPClient *resty.Client
 }
 
 type NamedRepository struct {
@@ -70,10 +70,10 @@ type NamedRepository struct {
 	RepositoryConfig
 }
 
-func NewHttpRepository(endpoint string) *HttpRepository {
-	return &HttpRepository{
+func NewHTTPRepository(endpoint string) *HTTPRepository {
+	return &HTTPRepository{
 		Endpoint:   endpoint,
-		HttpClient: resty.New().SetHeader("User-Agent", USER_AGENT).SetBaseURL(endpoint),
+		HTTPClient: resty.New().SetHeader("User-Agent", UserAgent).SetBaseURL(endpoint),
 	}
 }
 

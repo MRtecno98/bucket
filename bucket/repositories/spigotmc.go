@@ -1,6 +1,5 @@
 package repositories
 
-// Use this library to implement a repository.
 import (
 	"context"
 	"fmt"
@@ -16,7 +15,7 @@ import (
 
 // TODO: SpigotMC repository format (https://spiget.org/)
 
-const SPIGOTMC_REPOSITORY = "spigotmc"
+const SpigotMCRepository = "spigotmc"
 
 type SpigotMC struct {
 	bucket.LockRepository
@@ -52,7 +51,7 @@ type SpigotFile struct {
 }
 
 func init() {
-	bucket.RegisterRepository(SPIGOTMC_REPOSITORY,
+	bucket.RegisterRepository(SpigotMCRepository,
 		func(ctx context.Context, oc *bucket.OpenContext, opts map[string]string) bucket.Repository {
 			return NewSpigotRepository(ctx, oc) // Go boilerplate
 		})
@@ -66,7 +65,7 @@ func NewSpigotRepository(ctx context.Context, context *bucket.OpenContext) *Spig
 }
 
 func (r *SpigotMC) Provider() string {
-	return SPIGOTMC_REPOSITORY
+	return SpigotMCRepository
 }
 
 func (r *SpigotMC) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, []bucket.RemotePlugin, error) {
@@ -311,7 +310,7 @@ func (r *SpigotResource) GetLatestCompatible(platform bucket.PlatformType) (buck
 	return nil, r.repository.parseError(fmt.Errorf("no compatible version found"))
 }
 
-func (s *SpigotMC) categoryCompatible(scat spiget.Category, platform bucket.PlatformType) bool {
+func (r *SpigotMC) categoryCompatible(scat spiget.Category, platform bucket.PlatformType) bool {
 	cat, err := spigotmc.GetCategory(scat)
 	if err != nil {
 		return false
@@ -445,7 +444,7 @@ func (f *SpigotFile) Verify() error {
 	return nil // SpigotMC does not provide checksums
 }
 
-func (m *SpigotMC) parseError(err error) error {
+func (r *SpigotMC) parseError(err error) error {
 	if err == nil {
 		return nil
 	}

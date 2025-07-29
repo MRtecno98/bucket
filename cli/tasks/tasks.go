@@ -1,3 +1,4 @@
+// Package tasks provides task definitions for the bucket CLI application.
 package tasks
 
 import (

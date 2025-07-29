@@ -1,3 +1,4 @@
+// Package cli provides the command line interface for the bucket application.
 package cli
 
 import (

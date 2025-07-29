@@ -101,7 +101,7 @@ func ExtractVersions(p Plugin) []string {
 	return []string{}
 }
 
-// Inverse of the Levenshtein distance normalized between 0 and 1
+// LevenshteinIndex computes the inverse of the Levenshtein distance normalized between 0 and 1
 func LevenshteinIndex(a, b string) float64 {
 	tot := float64(lvh.Compare(a, b).EditDist)
 	uncased := float64(lvh.Compare(strings.ToLower(a), strings.ToLower(b)).EditDist)

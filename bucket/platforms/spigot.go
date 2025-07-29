@@ -1,3 +1,4 @@
+// Package platforms provides platform-specific implementations for the bucket application.
 package platforms
 
 import (
@@ -14,7 +15,7 @@ type SpigotPluginDescriptor struct {
 	Version     string   `yaml:"version"`
 	MainClass   string   `yaml:"main"`
 	Description string   `yaml:"description"`
-	ApiVersion  string   `yaml:"api-version"`
+	APIVersion  string   `yaml:"api-version"`
 	LoadPhase   string   `yaml:"load"`
 	Author      string   `yaml:"author"`
 	Authors     []string `yaml:"authors"`

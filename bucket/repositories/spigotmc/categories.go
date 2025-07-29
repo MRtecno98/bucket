@@ -1,3 +1,4 @@
+// Package spigotmc provides additional functionality for the SpigotMC repository.
 package spigotmc
 
 import (

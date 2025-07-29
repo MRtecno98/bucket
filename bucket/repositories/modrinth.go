@@ -20,9 +20,9 @@ import (
 
 // TODO: Modrinth repository format (https://modrinth.com/api/docs)
 
-const MODRINTH_ENDPOINT = "https://api.modrinth.com/v2"
+const ModrinthEndpoint = "https://api.modrinth.com/v2"
 
-const MODRINTH_REPOSITORY = "modrinth"
+const ModrinthRepository = "modrinth"
 
 type ModrinthSide string
 type ModrinthType string
@@ -31,26 +31,26 @@ type ModrinthVersionType string
 type ModrinthMonetization string
 
 const (
-	SIDE_REQUIRED    ModrinthSide = "required"
-	SIDE_OPTIONAL    ModrinthSide = "optional"
-	SIDE_UNSUPPORTED ModrinthSide = "unsupported"
+	SideRequired    ModrinthSide = "required"
+	SideOptional    ModrinthSide = "optional"
+	SideUnsupported ModrinthSide = "unsupported"
 
-	PROJECT_MOD          ModrinthType = "mod"
-	PROJECT_MODPACK      ModrinthType = "modpack"
-	PROJECT_RESOURCEPACK ModrinthType = "resourcepack"
+	ProjectMod          ModrinthType = "mod"
+	ProjectModpack      ModrinthType = "modpack"
+	ProjectResourcepack ModrinthType = "resourcepack"
 
-	DEPENDENCY_REQUIRED ModrinthDependency = "required"
-	DEPENDENCY_OPTIONAL ModrinthDependency = "optional"
-	DEPENDENCY_INCOMPAT ModrinthDependency = "incompatible"
-	DEPENDENCY_EMBEDDED ModrinthDependency = "embedded"
+	DependencyRequired ModrinthDependency = "required"
+	DependencyOptional ModrinthDependency = "optional"
+	DependencyIncompat ModrinthDependency = "incompatible"
+	DependencyEmbedded ModrinthDependency = "embedded"
 
-	MODRINTH_RELEASE ModrinthVersionType = "release"
-	MODRINTH_BETA    ModrinthVersionType = "beta"
-	MODRINTH_ALPHA   ModrinthVersionType = "alpha"
+	ModrinthRelease ModrinthVersionType = "release"
+	ModrinthBeta    ModrinthVersionType = "beta"
+	ModrinthAlpha   ModrinthVersionType = "alpha"
 
-	MODRINTH_MONETIZED         ModrinthMonetization = "monetized"
-	MODRINTH_DEMONETIZED       ModrinthMonetization = "demonetized"
-	MODRINTH_FORCE_DEMONETIZED ModrinthMonetization = "force-demonetized"
+	ModrinthMonetized        ModrinthMonetization = "monetized"
+	ModrinthDemonetized      ModrinthMonetization = "demonetized"
+	ModrinthForceDemonetized ModrinthMonetization = "force-demonetized"
 )
 
 type ModrinthProject struct {
@@ -67,21 +67,21 @@ type ModrinthProject struct {
 	ServerSide    ModrinthSide `json:"server_side"`
 	Body          string       `json:"body"`
 	AdtCategories []string     `json:"additional_categories"`
-	IssuesUrl     string       `json:"issues_url"`
-	SourceUrl     string       `json:"source_url"`
-	WikiUrl       string       `json:"wiki_url"`
-	DiscordUrl    string       `json:"discord_url"`
+	IssuesURL     string       `json:"issues_url"`
+	SourceURL     string       `json:"source_url"`
+	WikiURL       string       `json:"wiki_url"`
+	DiscordURL    string       `json:"discord_url"`
 	ProjectType   ModrinthType `json:"project_type"`
 	Downloads     int          `json:"downloads"`
-	IconUrl       string       `json:"icon_url"`
+	IconURL       string       `json:"icon_url"`
 	Team          string       `json:"team"`
 	Published     string       `json:"published"`
 	Updated       string       `json:"updated"`
 	Followers     int          `json:"followers"`
 	Versions      []string     `json:"versions"`
 	Gallery       []struct {
-		Url         string `json:"url"`
-		RawUrl      string `json:"raw_url"`
+		URL         string `json:"url"`
+		RawURL      string `json:"raw_url"`
 		Featured    bool   `json:"featured"`
 		Title       string `json:"title"`
 		Description string `json:"description"`
@@ -92,13 +92,13 @@ type ModrinthProject struct {
 	License struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
-		Url  string `json:"url"`
+		URL  string `json:"url"`
 	} `json:"license"`
 
 	DonationUrls []struct {
 		ID       string `json:"id"`
 		Platform string `json:"platform"`
-		Url      string `json:"url"`
+		URL      string `json:"url"`
 	} `json:"donation_urls"`
 }
 
@@ -193,14 +193,14 @@ type ModrinthSummary struct {
 }
 
 type Modrinth struct {
-	bucket.HttpRepository
+	bucket.HTTPRepository
 	bucket.LockRepository
 
 	Context *bucket.OpenContext
 }
 
 func init() {
-	bucket.RegisterRepository(MODRINTH_REPOSITORY,
+	bucket.RegisterRepository(ModrinthRepository,
 		func(ctx context.Context, oc *bucket.OpenContext, opts map[string]string) bucket.Repository {
 			return NewModrinthRepository(ctx, oc) // Go boilerplate
 		})
@@ -208,18 +208,18 @@ func init() {
 
 func NewModrinthRepository(lock context.Context, context *bucket.OpenContext) *Modrinth {
 	return &Modrinth{
-		HttpRepository: *bucket.NewHttpRepository(MODRINTH_ENDPOINT),
+		HTTPRepository: *bucket.NewHTTPRepository(ModrinthEndpoint),
 		LockRepository: bucket.LockRepository{Lock: lock},
 		Context:        context,
 	}
 }
 
 func (r *Modrinth) Provider() string {
-	return MODRINTH_REPOSITORY
+	return ModrinthRepository
 }
 
 func (r *Modrinth) makreq() *resty.Request {
-	return r.HttpClient.R().SetContext(r.Lock)
+	return r.HTTPClient.R().SetContext(r.Lock)
 }
 
 func (r *Modrinth) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, []bucket.RemotePlugin, error) {
@@ -352,6 +352,17 @@ func (r *Modrinth) Search(query string, max int) ([]bucket.RemotePlugin, int, er
 	return r.search(qmap, max)
 }
 
+func (r *Modrinth) parseReqError(res *resty.Response) error {
+	var err map[string]string
+	json.Unmarshal(res.Body(), &err)
+
+	return fmt.Errorf("modrinth: error %s: %s", res.Status(), err["error"])
+}
+
+func (r *Modrinth) parseError(err error) error {
+	return fmt.Errorf("modrinth: %s", err)
+}
+
 func (s *ModrinthProjectSummary) UnmarshalJSON(data []byte) error {
 	type Alias ModrinthProjectSummary
 	if err := json.Unmarshal(data, (*Alias)(s)); err != nil {
@@ -415,7 +426,7 @@ func (p *ModrinthProject) GetVersionByID(identifier string) (bucket.RemoteVersio
 func (p *ModrinthProject) GetVersions(limit int) ([]bucket.RemoteVersion, error) {
 	var versions []ModrinthVersion
 
-	res, err := p.repository.HttpClient.R().SetResult(&versions).Get("/project/" + p.Slug + "/version")
+	res, err := p.repository.HTTPClient.R().SetResult(&versions).Get("/project/" + p.Slug + "/version")
 	if err != nil {
 		return nil, p.repository.parseError(err)
 	}
@@ -504,7 +515,7 @@ func (p *ModrinthProject) GetDescription() string {
 }
 
 func (p *ModrinthProject) GetWebsite() string {
-	return p.WikiUrl
+	return p.WikiURL
 }
 
 func (p *ModrinthVersion) GetVersion() string {
@@ -552,7 +563,7 @@ func (f *ModrinthFile) Optional() bool {
 }
 
 func (f *ModrinthFile) Download() (io.ReadCloser, error) {
-	req := f.repository.HttpClient.R()
+	req := f.repository.HTTPClient.R()
 	req.SetDoNotParseResponse(true)
 
 	resp, err := req.Get(f.URL)
@@ -588,15 +599,4 @@ func (f *ModrinthFile) Verify() error {
 	}
 
 	return nil
-}
-
-func (m *Modrinth) parseReqError(res *resty.Response) error {
-	var err map[string]string
-	json.Unmarshal(res.Body(), &err)
-
-	return fmt.Errorf("modrinth: error %s: %s", res.Status(), err["error"])
-}
-
-func (m *Modrinth) parseError(err error) error {
-	return fmt.Errorf("modrinth: %s", err)
 }

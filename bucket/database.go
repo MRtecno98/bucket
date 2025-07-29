@@ -9,7 +9,7 @@ import (
 	"github.com/MRtecno98/afero/sqlitevfs"
 )
 
-const DATABASE_NAME = "bucket.db"
+const DatabaseName = "bucket.db"
 
 type CachedPlugin struct {
 	RemotePlugin
@@ -73,7 +73,7 @@ func (c *OpenContext) InitialiazeDatabase() error {
 
 	sqlitevfs.RegisterVFS(c.Name, c.Fs)
 
-	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?vfs=%s", DATABASE_NAME, c.Name))
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?vfs=%s", DatabaseName, c.Name))
 	if err != nil {
 		return err
 	}
@@ -237,8 +237,8 @@ func (c *OpenContext) CreateTables() error {
 	return nil
 }
 
-func (oc *OpenContext) DbSize() (int, error) {
-	inf, err := oc.Fs.Stat(DATABASE_NAME)
+func (c *OpenContext) DBSize() (int, error) {
+	inf, err := c.Fs.Stat(DatabaseName)
 	if err != nil {
 		return -1, nil
 	}
@@ -246,17 +246,17 @@ func (oc *OpenContext) DbSize() (int, error) {
 	return int(inf.Size()), nil
 }
 
-func (oc *OpenContext) CleanCache() error {
-	if oc.Database != nil {
-		if err := oc.Database.Close(); err != nil {
+func (c *OpenContext) CleanCache() error {
+	if c.Database != nil {
+		if err := c.Database.Close(); err != nil {
 			return err
 		}
 	}
 
-	if err := oc.Fs.Remove(DATABASE_NAME); err != nil {
+	if err := c.Fs.Remove(DatabaseName); err != nil {
 		return err
 	}
 
-	oc.Database = nil
+	c.Database = nil
 	return nil
 }

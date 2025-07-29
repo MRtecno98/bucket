@@ -13,9 +13,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
-const SIMILARITY_THRESHOLD float64 = 0.51
+const SimilarityTreshold float64 = 0.51
 
-var DEFAULT_REPOSITORIES = [...]string{"spigotmc", "modrinth"}
+var DefaultRepositories = [...]string{"spigotmc", "modrinth"}
 
 type Context struct {
 	Name string `yaml:"name"`
@@ -38,12 +38,12 @@ type Workspace struct {
 	Contexts []*OpenContext
 }
 
-func (oc *OpenContext) RunTask(task *Task) (error, bool) {
+func (c *OpenContext) RunTask(task *Task) (error, bool) {
 	var newline, n bool
 	var err error
 
 	for _, t := range task.Depends() {
-		err, n = oc.RunTask(t)
+		err, n = c.RunTask(t)
 		newline = newline || n
 
 		if err != nil {
@@ -51,7 +51,7 @@ func (oc *OpenContext) RunTask(task *Task) (error, bool) {
 		}
 	}
 
-	err, n = oc.Run(task.Name, task.Func)
+	err, n = c.Run(task.Name, task.Func)
 	newline = newline || n
 
 	if err != nil {
@@ -59,7 +59,7 @@ func (oc *OpenContext) RunTask(task *Task) (error, bool) {
 	}
 
 	for _, t := range task.After() {
-		err, n = oc.RunTask(t)
+		err, n = c.RunTask(t)
 		newline = newline || n
 
 		if err != nil {
@@ -269,7 +269,7 @@ func (c *OpenContext) ResolvePlugin(plugin Plugin) (RemotePlugin, error) {
 			slices.Sort(keys)
 			match := keys[len(keys)-1]
 
-			if match < SIMILARITY_THRESHOLD {
+			if match < SimilarityTreshold {
 				gerr = multierror.Append(gerr, fmt.Errorf(
 					"%d candidates found for \"%s\" but none satisfy similarity treshold, closest match was %f",
 					len(candidates), plugin.GetName(), match))
@@ -317,8 +317,8 @@ func (c *OpenContext) RepositoryByProvider(provider string) *NamedRepository {
 func (c *OpenContext) LoadRepositories() error {
 	repos := c.Config().Repositories
 	if len(repos) == 0 {
-		repos = make([]RepositoryConfig, len(DEFAULT_REPOSITORIES))
-		for i, v := range DEFAULT_REPOSITORIES {
+		repos = make([]RepositoryConfig, len(DefaultRepositories))
+		for i, v := range DefaultRepositories {
 			repos[i] = RepositoryConfig{Provider: v}
 		}
 	}
