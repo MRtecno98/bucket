@@ -41,12 +41,13 @@ type CachedPlugin struct {
 	CachedRecord
 
 	Repository NamedRepository `json:"-"`
+	requested  bool
 }
 
-func (r *CachedRecord) UnmarshalJSON(data []byte) error {
+func (cr *CachedRecord) UnmarshalJSON(data []byte) error {
 	type alias CachedRecord
 
-	if err := json.Unmarshal(data, (*alias)(r)); err != nil {
+	if err := json.Unmarshal(data, (*alias)(cr)); err != nil {
 		return err
 	}
 
@@ -58,24 +59,24 @@ func (r *CachedRecord) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	r.metadata = tmp.Metadata
+	cr.metadata = tmp.Metadata
 	return nil
 }
 
-func (r *CachedRecord) CachedPlugin(ctx *OpenContext) (*CachedPlugin, error) {
+func (cr *CachedRecord) CachedPlugin(ctx *OpenContext) (*CachedPlugin, error) {
 	var plugin CachedPlugin
 
-	plugin.CachedRecord = *r
+	plugin.CachedRecord = *cr
 
-	repo := ctx.RepositoryByNameOrProvider(r.Repository)
+	repo := ctx.RepositoryByNameOrProvider(cr.Repository)
 	if repo == nil {
-		return nil, fmt.Errorf("repository %s not found for plugin record %s", r.Repository, plugin.LocalIdentifier)
+		return nil, fmt.Errorf("repository %s not found for plugin record %s", cr.Repository, plugin.LocalIdentifier)
 	}
 
 	plugin.Repository = *repo
 
 	remote := reflect.New(plugin.Repository.PluginType()).Interface().(RemotePlugin)
-	if err := json.Unmarshal(r.metadata, &remote); err != nil {
+	if err := json.Unmarshal(cr.metadata, &remote); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal plugin metadata: %w", err)
 	}
 
@@ -109,10 +110,11 @@ func NewPluginBiMap() *SymmetricBiMap[string, CachedPlugin] {
 }
 
 func (cp *CachedPlugin) Request() error {
-	if cp.RemotePlugin != nil {
+	if cp.requested {
 		return nil
 	}
 
+	cp.requested = true
 	return cp.ForceRequest()
 }
 
@@ -125,6 +127,30 @@ func (cp *CachedPlugin) ForceRequest() error {
 	cp.RemotePlugin = remote
 
 	return nil
+}
+
+func (cr *CachedRecord) GetName() string {
+	if cr.Name != "" {
+		return cr.Name
+	}
+
+	if cr.RemoteIdentifier != "" {
+		return cr.RemoteIdentifier
+	}
+
+	return cr.LocalIdentifier
+}
+
+func (cr *CachedRecord) GetWebsite() string {
+	return cr.Website
+}
+
+func (cr *CachedRecord) GetAuthors() []string {
+	return cr.Authors
+}
+
+func (cr *CachedRecord) GetDescription() string {
+	return cr.Description
 }
 
 func (cp *CachedPlugin) GetName() string {
@@ -167,16 +193,8 @@ func (cp *CachedPlugin) GetWebsite() string {
 	return cp.Website
 }
 
-func (cp *CachedPlugin) requestIfMissing() error {
-	if cp.RemotePlugin == nil {
-		return cp.Request()
-	} else {
-		return nil
-	}
-}
-
 func (cp *CachedPlugin) GetLatestVersion() (RemoteVersion, error) {
-	if err := cp.requestIfMissing(); err != nil {
+	if err := cp.Request(); err != nil {
 		return nil, err
 	}
 
@@ -184,7 +202,7 @@ func (cp *CachedPlugin) GetLatestVersion() (RemoteVersion, error) {
 }
 
 func (cp *CachedPlugin) GetVersions(limit int) ([]RemoteVersion, error) {
-	if err := cp.requestIfMissing(); err != nil {
+	if err := cp.Request(); err != nil {
 		return nil, err
 	}
 
@@ -192,7 +210,7 @@ func (cp *CachedPlugin) GetVersions(limit int) ([]RemoteVersion, error) {
 }
 
 func (cp *CachedPlugin) GetVersionByID(version string) (RemoteVersion, error) {
-	if err := cp.requestIfMissing(); err != nil {
+	if err := cp.Request(); err != nil {
 		return nil, err
 	}
 
@@ -200,7 +218,7 @@ func (cp *CachedPlugin) GetVersionByID(version string) (RemoteVersion, error) {
 }
 
 func (cp *CachedPlugin) GetVersionIdentifiers() ([]string, error) {
-	if err := cp.requestIfMissing(); err != nil {
+	if err := cp.Request(); err != nil {
 		return nil, err
 	}
 
@@ -208,7 +226,7 @@ func (cp *CachedPlugin) GetVersionIdentifiers() ([]string, error) {
 }
 
 func (cp *CachedPlugin) GetLatestCompatible(plt PlatformType) (RemoteVersion, error) {
-	if err := cp.requestIfMissing(); err != nil {
+	if err := cp.Request(); err != nil {
 		return nil, err
 	}
 
