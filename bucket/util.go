@@ -51,6 +51,7 @@ func Parallelize(multi bool, tasks ...func() error) error {
 	for _, task := range tasks {
 		f := func(task func() error) {
 			defer wait.Done()
+
 			if err := task(); err != nil {
 				errs <- err
 			}

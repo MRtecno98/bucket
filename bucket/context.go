@@ -1,7 +1,6 @@
 package bucket
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"os"
@@ -24,14 +23,12 @@ type Context struct {
 
 type OpenContext struct {
 	Context
+	PluginDatabase
+
 	Fs           afero.Afero
 	LocalConfig  *Config
 	Platform     Platform
 	Repositories map[string]NamedRepository
-
-	Plugins *SymmetricBiMap[string, CachedPlugin]
-
-	Database *sql.DB
 }
 
 type Workspace struct {
@@ -147,23 +144,35 @@ func (c Context) OpenContext() (*OpenContext, error) {
 		conf.Collapse(GlobalConfig) // Also add base options
 	}
 
+	sumdb, err := LoadSumDB(conf.SumDB)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx := &OpenContext{Context: c, Fs: afero.Afero{Fs: fs},
-		LocalConfig:  conf,
-		Repositories: make(map[string]NamedRepository),
-		Plugins:      NewPluginBiMap()}
+		LocalConfig:    conf,
+		Repositories:   make(map[string]NamedRepository),
+		PluginDatabase: sumdb}
 
 	return ctx, Parallelize(ctx.LocalConfig.Multithread,
 		ctx.LoadRepositories,
 		ctx.LoadPlatform,
-		ctx.InitialiazeDatabase)
+		ctx.InitializeDatabase)
+}
+
+func LoadSumDB(name string) (PluginDatabase, error) {
+	switch name {
+	case SumDBSqlite:
+		return NewSqliteDatabase(), nil
+	case SumDBFile:
+		return NewSumfileDatabase(), nil
+	default:
+		return nil, fmt.Errorf("unknown sumdb type: %s", name)
+	}
 }
 
 func (c *OpenContext) CloseContext() {
-	if c.Database != nil {
-		// c.SavePluginDatabase() // Maybe not necessary
-		c.Database.Close()
-	}
-
+	c.CloseDatabase()
 	c.Fs.Close()
 }
 
@@ -226,10 +235,18 @@ func (c *OpenContext) LoadPlatform() error {
 	return nil
 }
 
+func (c *OpenContext) InitializeDatabase() error {
+	if DEBUG {
+		log.Printf("initializing database for %s\n", c.Name)
+	}
+
+	return c.PluginDatabase.InitializeDatabase(c)
+}
+
 func (c *OpenContext) ResolvePlugin(plugin Plugin) (RemotePlugin, error) {
 	var gerr error
 
-	if rem, ok := c.Plugins.GetAny(plugin.GetIdentifier()); ok {
+	if rem, ok := c.Plugins().GetAny(plugin.GetIdentifier()); ok {
 		return &rem, nil
 	}
 
@@ -276,8 +293,8 @@ func (c *OpenContext) ResolvePlugin(plugin Plugin) (RemotePlugin, error) {
 				continue
 			}
 
-			if local, ok := plugin.(LocalPlugin); ok {
-				res := CachedMatch(&local, scores[match], r, match)
+			if local, ok := plugin.(*LocalPlugin); ok {
+				res := CachedMatch(local, scores[match], r, match)
 				if err := c.SavePlugin(res); err != nil {
 					return nil, err
 				}

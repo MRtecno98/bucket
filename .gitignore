@@ -1,8 +1,8 @@
 bucketrc.yml
-bucket.exe
 go.work*
 profile*
 test/
 *.db
 *.o
 .DS_store
+*.exe

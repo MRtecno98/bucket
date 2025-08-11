@@ -22,6 +22,7 @@ type Config struct {
 	Contexts       []Context          `yaml:"contexts"`
 	Platform       string             `yaml:"platform"`
 	Multithread    bool               `yaml:"multithread"`
+	SumDB          string             `yaml:"sumdb,omitempty"`
 	Repositories   []RepositoryConfig `yaml:"repositories"`
 }
 

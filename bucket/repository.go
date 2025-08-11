@@ -3,12 +3,14 @@ package bucket
 import (
 	"context"
 	"io"
+	"reflect"
 
 	"github.com/go-resty/resty/v2"
 )
 
 type Repository interface {
 	Provider() string
+	PluginType() reflect.Type
 
 	Search(query string, max int) ([]RemotePlugin, int, error)
 	SearchAll(query string, max int) ([]RemotePlugin, int, error)

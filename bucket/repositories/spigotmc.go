@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -66,6 +67,10 @@ func NewSpigotRepository(ctx context.Context, context *bucket.OpenContext) *Spig
 
 func (r *SpigotMC) Provider() string {
 	return SpigotMCRepository
+}
+
+func (r *SpigotMC) PluginType() reflect.Type {
+	return reflect.TypeOf(SpigotResource{})
 }
 
 func (r *SpigotMC) Resolve(plugin bucket.Plugin) (bucket.RemotePlugin, []bucket.RemotePlugin, error) {

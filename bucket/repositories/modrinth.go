@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -216,6 +217,10 @@ func NewModrinthRepository(lock context.Context, context *bucket.OpenContext) *M
 
 func (r *Modrinth) Provider() string {
 	return ModrinthRepository
+}
+
+func (r *Modrinth) PluginType() reflect.Type {
+	return reflect.TypeOf(ModrinthProjectSummary{})
 }
 
 func (r *Modrinth) makreq() *resty.Request {

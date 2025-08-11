@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"runtime/pprof"
@@ -72,6 +73,13 @@ func main() {
 				Usage:       "disables multithreaded processes",
 				Value:       true,
 				Destination: &bucket.GlobalConfig.Multithread,
+			},
+
+			&cli.StringFlag{
+				Name:        "sumdb",
+				Usage:       fmt.Sprintf("selects type of sum database (`%s` or `%s`)", bucket.SumDBSqlite, bucket.SumDBFile),
+				Value:       bucket.SumDBFile,
+				Destination: &bucket.GlobalConfig.SumDB,
 			},
 
 			&cli.BoolFlag{

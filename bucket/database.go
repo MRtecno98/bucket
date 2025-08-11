@@ -11,85 +11,59 @@ import (
 
 const DatabaseName = "bucket.db"
 
-type CachedPlugin struct {
-	RemotePlugin
+const SumDBSqlite string = "sqlite"
 
-	Repository NamedRepository
-	File       string
+type SqliteDatabase struct {
+	Name string
 
-	name             string
-	LocalIdentifier  string
-	RemoteIdentifier string
+	conn *sql.DB
+	ctx  *OpenContext
 
-	authors     []string
-	description string
-	website     string
-
-	Confidence float64
+	plugins *SymmetricBiMap[string, CachedPlugin]
 }
 
-func CachedMatch(local *LocalPlugin, remote RemotePlugin, repo NamedRepository, conf float64) CachedPlugin {
-	return CachedPlugin{
-		RemotePlugin:     remote,
-		LocalIdentifier:  local.GetIdentifier(),
-		RemoteIdentifier: remote.GetIdentifier(),
-		Repository:       repo,
-		File:             local.File.Name(),
-		Confidence:       conf}
+func NewNamedSqliteDatabase(name string) *SqliteDatabase {
+	return &SqliteDatabase{
+		Name:    name,
+		plugins: NewPluginBiMap(),
+	}
 }
 
-func NewPluginBiMap() *SymmetricBiMap[string, CachedPlugin] {
-	return NewSymmetricBiMap(func(el CachedPlugin) (string, string) {
-		return el.LocalIdentifier, el.RemoteIdentifier
-	})
+func NewSqliteDatabase() *SqliteDatabase {
+	return NewNamedSqliteDatabase(DatabaseName)
 }
 
-func (cp *CachedPlugin) Request() error {
-	if cp.RemotePlugin != nil {
+func (db *SqliteDatabase) Plugins() *SymmetricBiMap[string, CachedPlugin] {
+	return db.plugins
+}
+
+func (db *SqliteDatabase) InitializeDatabase(ctx *OpenContext) error {
+	/* if _, ok := c.Fs.Fs.(*afero.MemMapFs); ok {
+		// TODO: Fix database for in-memory filesystem
+		log.Printf("%s: in-memory filesystem not supported for database\n", c.Name)
 		return nil
-	}
+	} */
 
-	remote, err := cp.Repository.Get(cp.RemoteIdentifier)
+	sqlitevfs.RegisterVFS(ctx.Name, ctx.Fs)
+
+	conn, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?vfs=%s", db.Name, ctx.Name))
 	if err != nil {
 		return err
 	}
 
-	cp.RemotePlugin = remote
+	db.conn = conn
+	db.ctx = ctx
 
-	return nil
-}
-
-func (c *OpenContext) InitialiazeDatabase() error {
-	if DEBUG {
-		log.Printf("initializing database for %s\n", c.Name)
-	}
-
-	/*
-		if _, ok := c.Fs.Fs.(*afero.MemMapFs); ok {
-			// TODO: Fix database for in-memory filesystem
-			log.Printf("%s: in-memory filesystem not supported for database\n", c.Name)
-			return nil
-		} */
-
-	sqlitevfs.RegisterVFS(c.Name, c.Fs)
-
-	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?vfs=%s", DatabaseName, c.Name))
-	if err != nil {
-		return err
-	}
-
-	c.Database = db
-
-	if err = c.CreateTables(); err != nil {
-		db.Close()
+	if err = db.InitializeTables(); err != nil {
+		db.CloseDatabase()
 		return fmt.Errorf("sql: %w", err)
 	}
 
 	return nil
 }
 
-func (c *OpenContext) LoadPluginDatabase() error {
-	rows, err := c.Database.Query(`SELECT * FROM plugins`)
+func (db *SqliteDatabase) LoadPluginDatabase() error {
+	rows, err := db.conn.Query(`SELECT * FROM plugins`)
 	if err != nil {
 		return err
 	}
@@ -103,13 +77,13 @@ func (c *OpenContext) LoadPluginDatabase() error {
 
 		if err := rows.Scan(&plugin.LocalIdentifier,
 			&plugin.RemoteIdentifier, &plugin.File,
-			&plugin.name, &repo, &plugin.Confidence, &authors,
-			&plugin.description, &plugin.website); err != nil {
+			&plugin.Name, &repo, &plugin.Confidence, &authors,
+			&plugin.Description, &plugin.Website); err != nil {
 			return err
 		}
 
-		plugin.authors = strings.Split(authors, ",")
-		repository := c.RepositoryByNameOrProvider(repo)
+		plugin.Authors = strings.Split(authors, ",")
+		repository := db.ctx.RepositoryByNameOrProvider(repo)
 		if repository == nil {
 			log.Printf("warn: repository %s not found for plugin record %s\n", repo, plugin.LocalIdentifier)
 			continue
@@ -117,21 +91,21 @@ func (c *OpenContext) LoadPluginDatabase() error {
 
 		plugin.Repository = *repository
 
-		c.Plugins.Put(plugin)
+		db.plugins.Put(plugin)
 	}
 
 	return nil
 }
 
-func (c *OpenContext) SavePlugin(plugin CachedPlugin) error {
-	tx, err := c.Database.Begin()
+func (db *SqliteDatabase) SavePlugin(plugin CachedPlugin) error {
+	tx, err := db.conn.Begin()
 	if err != nil {
 		return err
 	}
 
 	defer tx.Rollback()
 
-	if err := c._savePlugin(plugin); err != nil {
+	if err := db._savePlugin(plugin); err != nil {
 		return err
 	}
 
@@ -139,11 +113,11 @@ func (c *OpenContext) SavePlugin(plugin CachedPlugin) error {
 		return fmt.Errorf("plugin save: %w", err)
 	}
 
-	c.Plugins.Put(plugin)
+	db.plugins.Put(plugin)
 	return nil
 }
 
-func (c *OpenContext) _savePlugin(plugins ...CachedPlugin) error {
+func (db *SqliteDatabase) _savePlugin(plugins ...CachedPlugin) error {
 	var q strings.Builder
 	var args []any
 
@@ -173,28 +147,28 @@ func (c *OpenContext) _savePlugin(plugins ...CachedPlugin) error {
 			plugin.GetDescription(), plugin.GetWebsite())
 	}
 
-	if _, err := c.Database.Exec(q.String(), args...); err != nil {
+	if _, err := db.conn.Exec(q.String(), args...); err != nil {
 		return fmt.Errorf("db save (no data was modified): %w", err)
 	}
 
 	return nil
 }
 
-func (c *OpenContext) SavePluginDatabase() error {
-	tx, err := c.Database.Begin()
+func (db *SqliteDatabase) SavePluginDatabase() error {
+	tx, err := db.conn.Begin()
 	if err != nil {
 		return err
 	}
 
-	if c._savePlugin(c.Plugins.Values()...) != nil {
+	if db._savePlugin(db.plugins.Values()...) != nil {
 		return tx.Rollback()
 	}
 
 	return tx.Commit()
 }
 
-func (c *OpenContext) CreateTables() error {
-	tx, err := c.Database.Begin()
+func (db *SqliteDatabase) InitializeTables() error {
+	tx, err := db.conn.Begin()
 	if err != nil {
 		return err
 	}
@@ -237,26 +211,40 @@ func (c *OpenContext) CreateTables() error {
 	return nil
 }
 
-func (c *OpenContext) DBSize() (int, error) {
-	inf, err := c.Fs.Stat(DatabaseName)
+func (db *SqliteDatabase) DBSize() (int64, error) {
+	inf, err := db.ctx.Fs.Stat(DatabaseName)
 	if err != nil {
 		return -1, nil
 	}
 
-	return int(inf.Size()), nil
+	return inf.Size(), nil
 }
 
-func (c *OpenContext) CleanCache() error {
-	if c.Database != nil {
-		if err := c.Database.Close(); err != nil {
+func (db *SqliteDatabase) CleanCache() error {
+	if db.conn != nil {
+		if err := db.conn.Close(); err != nil {
 			return err
 		}
 	}
 
-	if err := c.Fs.Remove(DatabaseName); err != nil {
+	if err := db.ctx.Fs.Remove(DatabaseName); err != nil {
 		return err
 	}
 
-	c.Database = nil
+	db.conn = nil
+	return nil
+}
+
+func (db *SqliteDatabase) CloseDatabase() error {
+	if db.conn != nil {
+		if err := db.conn.Close(); err != nil {
+			return fmt.Errorf("close database: %w", err)
+		}
+	}
+
+	db.conn = nil
+	db.ctx = nil
+	db.plugins = nil
+
 	return nil
 }

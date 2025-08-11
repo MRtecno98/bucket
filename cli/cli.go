@@ -69,7 +69,6 @@ func InitializeContexts(loadDatabase bool) func(*cli.Context) error {
 
 		if bucket.DEBUG {
 			bucket.LogContexts(Workspace)
-			fmt.Println()
 		}
 
 		return nil
@@ -82,6 +81,8 @@ func ShutdownContexts(c *cli.Context) error {
 		if len(Workspace.Contexts) <= 1 {
 			fmt.Println()
 		}
+	} else {
+		fmt.Println()
 	}
 
 	dur := time.Since(Time).Truncate(time.Millisecond)

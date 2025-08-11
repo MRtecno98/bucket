@@ -12,10 +12,9 @@ var oc *OpenContext = &OpenContext{
 		URL:  "test",
 	},
 
-	Fs:           afero.Afero{},
-	Database:     nil,
-	Repositories: nil,
-	Plugins:      NewPluginBiMap(),
+	Fs:             afero.Afero{},
+	PluginDatabase: NewSqliteDatabase(),
+	Repositories:   nil,
 
 	LocalConfig: &Config{
 		ActiveContexts: []string{"test"},
