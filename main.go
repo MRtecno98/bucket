@@ -70,14 +70,14 @@ func main() {
 			&cli.BoolFlag{
 				Name:        "parallel",
 				Aliases:     []string{"j"},
-				Usage:       "disables multithreaded processes",
+				Usage:       "enables multithreaded processes",
 				Value:       true,
 				Destination: &bucket.GlobalConfig.Multithread,
 			},
 
 			&cli.StringFlag{
 				Name:        "sumdb",
-				Usage:       fmt.Sprintf("selects type of sum database (`%s` or `%s`)", bucket.SumDBSqlite, bucket.SumDBFile),
+				Usage:       fmt.Sprintf("selects a `TYPE` of sum database (\"%s\" or \"%s\")", bucket.SumDBSqlite, bucket.SumDBFile),
 				Value:       bucket.SumDBFile,
 				Destination: &bucket.GlobalConfig.SumDB,
 			},
