@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 )
 
 const SumfileName string = "bucket.sum"
@@ -16,6 +17,7 @@ const SumDBFile string = "file"
 type SumfileDatabase struct {
 	Name string
 
+	lock    sync.Mutex
 	ctx     *OpenContext
 	plugins *SymmetricBiMap[string, CachedPlugin]
 }
@@ -72,6 +74,9 @@ func (db *SumfileDatabase) InitializeDatabase(ctx *OpenContext) error {
 }
 
 func (db *SumfileDatabase) LoadPluginDatabase() error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
 	f, err := db.ctx.Fs.OpenFile(db.Name, os.O_RDONLY, 0644)
 	if err != nil {
 		return db._parseError(err)
@@ -109,6 +114,9 @@ func (db *SumfileDatabase) SavePlugin(plugin CachedPlugin) error {
 }
 
 func (db *SumfileDatabase) SavePluginDatabase() error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
 	f, err := db.ctx.Fs.OpenFile(db.Name, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return db._parseError(err)
